@@ -265,9 +265,6 @@ struct QWindowsContextPrivate {
     QWindowsMimeConverter m_mimeConverter;
     QWindowsScreenManager m_screenManager;
     QSharedPointer<QWindowCreationContext> m_creationContext;
-#if QT_CONFIG(tabletevent)
-    QScopedPointer<QWindowsTabletSupport> m_tabletSupport;
-#endif
     const HRESULT m_oleInitializeResult;
     QWindow *m_lastActiveWindow = nullptr;
     bool m_asyncExpose = false;
@@ -308,9 +305,6 @@ QWindowsContext::QWindowsContext() :
 
 QWindowsContext::~QWindowsContext()
 {
-#if QT_CONFIG(tabletevent)
-    d->m_tabletSupport.reset(); // Destroy internal window before unregistering classes.
-#endif
     unregisterWindowClasses();
     if (d->m_oleInitializeResult == S_OK || d->m_oleInitializeResult == S_FALSE)
         OleUninitialize();
@@ -383,12 +377,7 @@ bool QWindowsContext::initPointer(unsigned integrationOptions)
 
 void QWindowsContext::setTabletAbsoluteRange(int a)
 {
-#if QT_CONFIG(tabletevent)
-    if (!d->m_tabletSupport.isNull())
-        d->m_tabletSupport->setAbsoluteRange(a);
-#else
     Q_UNUSED(a)
-#endif
 }
 
 void QWindowsContext::setDetectAltGrModifier(bool a)
@@ -799,11 +788,7 @@ QWindowsScreenManager &QWindowsContext::screenManager()
 
 QWindowsTabletSupport *QWindowsContext::tabletSupport() const
 {
-#if QT_CONFIG(tabletevent)
-    return d->m_tabletSupport.data();
-#else
     return 0;
-#endif
 }
 
 /*!
@@ -1288,10 +1273,6 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
             *result = LRESULT(MA_NOACTIVATE);
             return true;
         }
-#if QT_CONFIG(tabletevent)
-        if (!d->m_tabletSupport.isNull())
-            d->m_tabletSupport->notifyActivate();
-#endif // QT_CONFIG(tabletevent)
         if (platformWindow->testFlag(QWindowsWindow::BlockedByModal))
             if (const QWindow *modalWindow = QGuiApplication::modalWindow()) {
                 QWindowsWindow *platformWindow = QWindowsWindow::windowsWindowOf(modalWindow);
