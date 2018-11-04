@@ -1956,7 +1956,7 @@ void QWindowsWindow::setWindowState_sys(Qt::WindowStates newState)
                 const UINT swpf = SWP_FRAMECHANGED | SWP_NOACTIVATE;
                 const bool wasSync = testFlag(SynchronousGeometryChangeEvent);
                 setFlag(SynchronousGeometryChangeEvent);
-                SetWindowPos(m_data.hwnd, HWND_TOP, r.left(), r.top(), r.width(), r.height(), swpf);
+                SetWindowPos(m_data.hwnd, HWND_TOP, r.left()-1, r.top()-1, r.width()+2, r.height()+2, swpf);
                 if (!wasSync)
                     clearFlag(SynchronousGeometryChangeEvent);
                 clearFlag(MaximizeToFullScreen);

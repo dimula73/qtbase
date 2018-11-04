@@ -15,22 +15,12 @@ defineTest(qtConfLibrary_freetype) {
     return(true)
 }
 
-# Check for Direct X SDK (include, lib, and direct shader compiler 'fxc').
-# Up to Direct X SDK June 2010 and for MinGW, this is pointed to by the
-# DXSDK_DIR variable. Starting with Windows Kit 8, it is included in
-# the Windows SDK. Checking for the header is not sufficient, since it
-# is also present in MinGW.
+# For MSVC everything DirectX related is included in Windows Kit >= 8,
+# so we do not do any magic in this case.
+# For MinGW we need the shader compiler (fxc.exe), which
+# are not part of MinGW. They can either be obtained from a DirectX SDK
+# (keep the old approach working) or Windows Kit (>= 8).
 defineTest(qtConfTest_directX) {
-    dxdir = $$getenv("DXSDK_DIR")
-    !isEmpty(dxdir) {
-        EXTRA_INCLUDEPATH += $$dxdir/include
-        equals(QT_ARCH, x86_64): \
-            EXTRA_LIBDIR += $$dxdir/lib/x64
-        else: \
-            EXTRA_LIBDIR += $$dxdir/lib/x86
-        EXTRA_PATH += $$dxdir/Utilities/bin/x86
-    }
-
     $$qtConfEvaluate("features.sse2") {
         ky = $$size($${1}.files._KEYS_)
         $${1}.files._KEYS_ += $$ky
@@ -39,6 +29,50 @@ defineTest(qtConfTest_directX) {
     }
 
     qtConfTest_files($${1}): return(true)
+    return(false)
+}
+
+defineTest(qtConfTest_fxc) {
+    !mingw {
+        fxc = $$qtConfFindInPath("fxc.exe")
+    } else {
+        dxdir = $$getenv("DXSDK_DIR")
+        winkitdir = $$getenv("WindowsSdkDir")
+        !isEmpty(dxdir) {
+            equals(QT_ARCH, x86_64): \
+                fxc = $$dxdir/Utilities/bin/x64/fxc.exe
+            else: \
+                fxc = $$dxdir/Utilities/bin/x86/fxc.exe
+        } else: !isEmpty(winkitdir) {
+            equals(QT_ARCH, x86_64): \
+                fxc = $$winkitdir/bin/x64/fxc.exe
+            else: \
+                fxc = $$winkitdir/bin/x86/fxc.exe
+
+            !exists($$fxc) {
+                binsubdirs = $$files($$winkitdir/bin/*)
+                for (dir, binsubdirs) {
+                    equals(QT_ARCH, x86_64): \
+                        finalBinDir = $$dir/x64
+                    else: \
+                        finalBinDir = $$dir/x86
+
+                    fxc = $${finalBinDir}/fxc.exe
+                    exists($$fxc) {
+                        break()
+                    }
+                }
+            }
+       }
+    }
+
+    !isEmpty(fxc):exists($$fxc) {
+        $${1}.value = $$fxc
+        export($${1}.value)
+        $${1}.cache += value
+        export($${1}.cache)
+        return(true)
+    }
     return(false)
 }
 

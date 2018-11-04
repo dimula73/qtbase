@@ -21,20 +21,6 @@ lib_replace.replace = \$\$\$\$[QT_INSTALL_LIBS]
 lib_replace.CONFIG = path
 QMAKE_PRL_INSTALL_REPLACE += lib_replace
 
-# DirectX is included in the Windows 8 Kit, but everything else requires the DX SDK.
-winrt|msvc {
-    FXC = fxc.exe
-} else {
-    DX_DIR = $$(DXSDK_DIR)
-    isEmpty(DX_DIR) {
-        error("Cannot determine DirectX SDK location. Please set DXSDK_DIR environment variable.")
-    }
-
-    equals(QMAKE_TARGET.arch, x86_64) {
-        FXC = \"$${DX_DIR}Utilities\\bin\\x64\\fxc.exe\"
-    } else {
-        FXC = \"$${DX_DIR}Utilities\\bin\\x86\\fxc.exe\"
-    }
-}
+FXC = $$QMAKE_FXC_LOCATION
 
 static: DEFINES *= LIBGLESV2_EXPORT_H_ ANGLE_EXPORT=

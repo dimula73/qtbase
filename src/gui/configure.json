@@ -656,10 +656,13 @@
             "label": "DirectX SDK",
             "type": "directX",
             "files": [
-                "d3dcompiler.h",
-                "d3d11.lib",
-                "fxc.exe"
+                "d3dcompiler.h"
             ]
+        },
+        "fxc": {
+            "label": "DirectX Shader Compiler",
+            "type": "fxc",
+            "log": "value"
         },
         "egl-x11": {
             "label": "EGL on X11",
@@ -909,10 +912,11 @@
         "angle": {
             "label": "ANGLE",
             "autoDetect": "features.opengles2 || features.opengl-dynamic",
-            "condition": "config.win32 && tests.directx",
+            "condition": "config.win32 && tests.directx && tests.fxc",
             "output": [
                 "publicFeature",
-                { "type": "define", "name": "QT_OPENGL_ES_2_ANGLE" }
+                { "type": "define", "name": "QT_OPENGL_ES_2_ANGLE" },
+                { "type": "varAssign", "name": "QMAKE_FXC_LOCATION", "value": "tests.fxc.value" }
             ]
         },
         "angle_d3d11_qdtd": {
