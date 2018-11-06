@@ -48,6 +48,7 @@ struct Renderer11DeviceCaps
 {
     D3D_FEATURE_LEVEL featureLevel;
     bool supportsDXGI1_2;               // Support for DXGI 1.2
+    bool supportsDXGI1_4;               // Support for DXGI 1.4
     bool supportsClearView;             // Support for ID3D11DeviceContext1::ClearView
     bool supportsConstantBufferOffsets; // Support for Constant buffer offset
     UINT B5G6R5support;                 // Bitfield of D3D11_FORMAT_SUPPORT values for DXGI_FORMAT_B5G6R5_UNORM
@@ -118,7 +119,8 @@ class Renderer11 : public RendererD3D
                                   HANDLE shareHandle,
                                   GLenum backBufferFormat,
                                   GLenum depthBufferFormat,
-                                  EGLint orientation) override;
+                                  EGLint orientation,
+                                  EGLint colorSpace) override;
 
     CompilerImpl *createCompiler() override;
 

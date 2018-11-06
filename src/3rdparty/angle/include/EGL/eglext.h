@@ -130,6 +130,22 @@ EGLAPI EGLBoolean EGLAPIENTRY eglGetSyncAttribKHR (EGLDisplay dpy, EGLSyncKHR sy
 #define EGL_GL_COLORSPACE_LINEAR_KHR      0x308A
 #endif /* EGL_KHR_gl_colorspace */
 
+#ifndef EGL_EXT_gl_colorspace_scrgb
+#define EGL_EXT_gl_colorspace_scrgb 1
+#define EGL_GL_COLORSPACE_SCRGB_EXT       0x3351
+#endif /* EGL_EXT_gl_colorspace_scrgb */
+
+#ifndef EGL_EXT_gl_colorspace_scrgb_linear
+#define EGL_EXT_gl_colorspace_scrgb_linear 1
+#define EGL_GL_COLORSPACE_SCRGB_LINEAR_EXT 0x3350
+#endif /* EGL_EXT_gl_colorspace_scrgb_linear */
+
+#ifndef EGL_EXT_gl_colorspace_bt2020
+#define EGL_EXT_gl_colorspace_bt2020 1
+#define EGL_GL_COLORSPACE_BT2020_LINEAR_EXT 0x333F
+#define EGL_GL_COLORSPACE_BT2020_PQ_EXT     0x3340
+#endif /*EGL_EXT_gl_colorspace_bt2020 */
+
 #ifndef EGL_KHR_gl_renderbuffer_image
 #define EGL_KHR_gl_renderbuffer_image 1
 #define EGL_GL_RENDERBUFFER_KHR           0x30B9

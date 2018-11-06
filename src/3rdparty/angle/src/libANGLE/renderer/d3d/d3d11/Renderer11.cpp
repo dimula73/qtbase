@@ -395,6 +395,7 @@ Renderer11::Renderer11(egl::Display *display)
     mRenderer11DeviceCaps.supportsClearView = false;
     mRenderer11DeviceCaps.supportsConstantBufferOffsets = false;
     mRenderer11DeviceCaps.supportsDXGI1_2 = false;
+    mRenderer11DeviceCaps.supportsDXGI1_4 = false;
     mRenderer11DeviceCaps.B5G6R5support = 0;
     mRenderer11DeviceCaps.B4G4R4A4support = 0;
     mRenderer11DeviceCaps.B5G5R5A1support = 0;
@@ -847,6 +848,7 @@ void Renderer11::initializeDevice()
 
     // Gather stats on DXGI and D3D feature level
     ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.SupportsDXGI1_2", mRenderer11DeviceCaps.supportsDXGI1_2);
+    ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.SupportsDXGI1_4", mRenderer11DeviceCaps.supportsDXGI1_4);
 
     ANGLEFeatureLevel angleFeatureLevel = GetANGLEFeatureLevel(mRenderer11DeviceCaps.featureLevel);
 
@@ -902,10 +904,15 @@ void Renderer11::populateRenderer11DeviceCaps()
         mRenderer11DeviceCaps.B5G5R5A1support = 0;
     }
 
+
 #if defined(ANGLE_ENABLE_D3D11_1)
     IDXGIAdapter2 *dxgiAdapter2 = d3d11::DynamicCastComObject<IDXGIAdapter2>(mDxgiAdapter);
     mRenderer11DeviceCaps.supportsDXGI1_2 = (dxgiAdapter2 != nullptr);
     SafeRelease(dxgiAdapter2);
+
+    IDXGIAdapter3 *dxgiAdapter3 = d3d11::DynamicCastComObject<IDXGIAdapter3>(mDxgiAdapter);
+    mRenderer11DeviceCaps.supportsDXGI1_4 = (dxgiAdapter3 != nullptr);
+    SafeRelease(dxgiAdapter3);
 #endif
 }
 
@@ -913,9 +920,13 @@ egl::ConfigSet Renderer11::generateConfigs() const
 {
     std::vector<GLenum> colorBufferFormats;
 
+    // 64-bit supported formats
+    colorBufferFormats.push_back(GL_RGBA16F);
+
     // 32-bit supported formats
     colorBufferFormats.push_back(GL_BGRA8_EXT);
     colorBufferFormats.push_back(GL_RGBA8_OES);
+    colorBufferFormats.push_back(GL_RGB10_A2);
 
     // 24-bit supported formats
     colorBufferFormats.push_back(GL_RGB8_OES);
@@ -939,6 +950,8 @@ egl::ConfigSet Renderer11::generateConfigs() const
 
     const gl::Caps &rendererCaps = getRendererCaps();
     const gl::TextureCapsMap &rendererTextureCaps = getRendererTextureCaps();
+
+
 
     const EGLint optimalSurfaceOrientation =
         mPresentPathFastEnabled ? 0 : EGL_SURFACE_ORIENTATION_INVERT_Y_ANGLE;
@@ -1062,6 +1075,11 @@ void Renderer11::generateDisplayExtensions(egl::DisplayExtensions *outExtensions
 
     outExtensions->flexibleSurfaceCompatibility = true;
     outExtensions->directComposition            = !!mDCompModule;
+
+    // color space selection is always supported in DirectX11
+    outExtensions->colorspaceSRGB = true;
+    outExtensions->colorspaceSCRGBLinear = true;
+    outExtensions->colorspaceBt2020PQ = true;
 }
 
 gl::Error Renderer11::flush()
@@ -1117,10 +1135,11 @@ SwapChainD3D *Renderer11::createSwapChain(NativeWindow nativeWindow,
                                           HANDLE shareHandle,
                                           GLenum backBufferFormat,
                                           GLenum depthBufferFormat,
-                                          EGLint orientation)
+                                          EGLint orientation,
+                                          EGLint colorSpace)
 {
     return new SwapChain11(this, nativeWindow, shareHandle, backBufferFormat, depthBufferFormat,
-                           orientation);
+                           orientation, colorSpace);
 }
 
 CompilerImpl *Renderer11::createCompiler()

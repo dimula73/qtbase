@@ -635,7 +635,10 @@ DisplayExtensions::DisplayExtensions()
       getAllProcAddresses(false),
       flexibleSurfaceCompatibility(false),
       directComposition(false),
-      createContextNoError(false)
+      createContextNoError(false),
+      colorspaceSRGB(false),
+      colorspaceSCRGBLinear(false),
+      colorspaceBt2020PQ(false)
 {
 }
 
@@ -665,6 +668,10 @@ std::vector<std::string> DisplayExtensions::getStrings() const
     InsertExtensionString("EGL_KHR_gl_renderbuffer_image",                 glRenderbufferImage,            &extensionStrings);
     InsertExtensionString("EGL_KHR_get_all_proc_addresses",                getAllProcAddresses,            &extensionStrings);
     InsertExtensionString("EGL_ANGLE_flexible_surface_compatibility",      flexibleSurfaceCompatibility,   &extensionStrings);
+    InsertExtensionString("EGL_KHR_gl_colorspace",                         colorspaceSRGB,                 &extensionStrings);
+    InsertExtensionString("EGL_EXT_gl_colorspace_scrgb_linear",            colorspaceSCRGBLinear,          &extensionStrings);
+    InsertExtensionString("EGL_EXT_gl_colorspace_bt2020_pq",               colorspaceBt2020PQ,             &extensionStrings);
+
     // TODO(jmadill): Enable this when complete.
     //InsertExtensionString("KHR_create_context_no_error",                   createContextNoError,           &extensionStrings);
     // clang-format on

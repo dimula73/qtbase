@@ -18,6 +18,8 @@
 #include "libANGLE/renderer/d3d/d3d11/texture_format_table.h"
 #include "third_party/trace_event/trace_event.h"
 
+#include <Dxgi1_5.h>
+
 // Precompiled shaders
 #include "libANGLE/renderer/d3d/d3d11/shaders/compiled/passthrough2d11vs.h"
 #include "libANGLE/renderer/d3d/d3d11/shaders/compiled/passthroughrgba2d11ps.h"
@@ -47,12 +49,14 @@ SwapChain11::SwapChain11(Renderer11 *renderer,
                          HANDLE shareHandle,
                          GLenum backBufferFormat,
                          GLenum depthBufferFormat,
-                         EGLint orientation)
+                         EGLint orientation,
+                         EGLint colorSpace)
     : SwapChainD3D(nativeWindow, shareHandle, backBufferFormat, depthBufferFormat),
       mRenderer(renderer),
       mWidth(-1),
       mHeight(-1),
       mOrientation(orientation),
+      mColorSpace(colorSpace),
       mAppCreatedShareHandle(mShareHandle != nullptr),
       mSwapInterval(0),
       mPassThroughResourcesInit(false),
@@ -489,7 +493,10 @@ DXGI_FORMAT SwapChain11::getSwapChainNativeFormat() const
 {
     // Return a render target format for offscreen rendering is supported by IDXGISwapChain.
     // MSDN https://msdn.microsoft.com/en-us/library/windows/desktop/bb173064(v=vs.85).aspx
-    return (mOffscreenRenderTargetFormat == GL_BGRA8_EXT) ? DXGI_FORMAT_B8G8R8A8_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+    return (mOffscreenRenderTargetFormat == GL_BGRA8_EXT) ? DXGI_FORMAT_B8G8R8A8_UNORM :
+           (mOffscreenRenderTargetFormat == GL_RGBA16F) ? DXGI_FORMAT_R16G16B16A16_FLOAT :
+           (mOffscreenRenderTargetFormat == GL_RGB10_A2) ? DXGI_FORMAT_R10G10B10A2_UNORM :
+           DXGI_FORMAT_R8G8B8A8_UNORM;
 }
 
 EGLint SwapChain11::reset(int backbufferWidth, int backbufferHeight, EGLint swapInterval)
@@ -560,11 +567,97 @@ EGLint SwapChain11::reset(int backbufferWidth, int backbufferHeight, EGLint swap
 #endif
         }
 
+        if (mRenderer->getRenderer11DeviceCaps().supportsDXGI1_4)
+        {
+#if defined(ANGLE_ENABLE_D3D11_1)
+            IDXGISwapChain3 *swapChain3 = d3d11::DynamicCastComObject<IDXGISwapChain3>(mSwapChain);
+
+            printf("*** EGL colorSpace: 0x%X\n", mColorSpace);
+            printf("*** EGL format: 0x%X\n", mOffscreenRenderTargetFormat);
+            printf("*** Native format: 0x%X\n", getSwapChainNativeFormat());
+
+            if (mColorSpace != EGL_GL_COLORSPACE_LINEAR_KHR) {
+                DXGI_COLOR_SPACE_TYPE nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+                switch (mColorSpace)
+                {
+                case EGL_GL_COLORSPACE_SRGB_KHR:
+                    nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+                    break;
+                case EGL_GL_COLORSPACE_SCRGB_LINEAR_EXT:
+                    nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                    break;
+                case EGL_GL_COLORSPACE_BT2020_PQ_EXT:
+                    nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    break;
+                default:
+                    ASSERT(0 && "Unsupported colorspace requested");
+                }
+
+                printf("*** Native colorSpace: 0x%X\n", nativeColorSpace);
+
+                UINT supported = 0;
+                result = swapChain3->CheckColorSpaceSupport(nativeColorSpace, &supported);
+                ASSERT(SUCCEEDED(result));
+                if (!(supported & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)) {
+                    SafeRelease(swapChain3);
+                    return EGL_BAD_MATCH;
+                }
+
+                result = swapChain3->SetColorSpace1(nativeColorSpace);
+                ASSERT(SUCCEEDED(result));
+            }
+
+            SafeRelease(swapChain3);
+
+#if 0
+
+            IDXGISwapChain4 *swapChain4 = d3d11::DynamicCastComObject<IDXGISwapChain4>(mSwapChain);
+
+            DXGI_HDR_METADATA_HDR10 md;
+            md.RedPrimary[0] = 0.680 * 50000;
+            md.RedPrimary[1] = 0.320 * 50000;
+            md.GreenPrimary[0] = 0.265 * 50000;
+            md.GreenPrimary[1] = 0.690 * 50000;
+            md.BluePrimary[0] = 0.150 * 50000;
+            md.BluePrimary[1] = 0.060 * 50000;
+            md.WhitePoint[0] = 0.3127 * 50000;
+            md.WhitePoint[1] = 0.3290 * 50000;
+            md.MaxMasteringLuminance = 1000 * 10000;
+            md.MinMasteringLuminance = 0.001 * 10000;
+            md.MaxContentLightLevel = 1000;
+            md.MaxFrameAverageLightLevel = 200;
+            result = swapChain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(md), &md);
+            printf("*** Result hdr 0x%X\n", result);
+            SafeRelease(swapChain4);
+#endif
+
+#endif
+        }
+
+
         result = mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mBackBufferTexture);
         ASSERT(SUCCEEDED(result));
         d3d11::SetDebugName(mBackBufferTexture, "Back buffer texture");
 
-        result = device->CreateRenderTargetView(mBackBufferTexture, NULL, &mBackBufferRTView);
+        D3D11_RENDER_TARGET_VIEW_DESC offscreenRTVDesc;
+        offscreenRTVDesc.Format = getSwapChainNativeFormat();
+
+        if (mColorSpace == EGL_GL_COLORSPACE_SRGB_KHR) {
+            if (offscreenRTVDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM) {
+                offscreenRTVDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+            }
+
+            if (offscreenRTVDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM) {
+                offscreenRTVDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+            }
+        }
+
+        printf("*** Render target format: 0x%X\n", offscreenRTVDesc.Format);
+
+        offscreenRTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+        offscreenRTVDesc.Texture2D.MipSlice = 0;
+
+        result = device->CreateRenderTargetView(mBackBufferTexture, &offscreenRTVDesc, &mBackBufferRTView);
         ASSERT(SUCCEEDED(result));
         d3d11::SetDebugName(mBackBufferRTView, "Back buffer render target");
 
