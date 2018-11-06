@@ -33,7 +33,8 @@ class SurfaceD3D : public SurfaceImpl
                                         EGLint directComposition,
                                         EGLint width,
                                         EGLint height,
-                                        EGLint orientation);
+                                        EGLint orientation,
+                                        EGLint colorSpace);
     static SurfaceD3D *createOffscreen(RendererD3D *renderer, egl::Display *display, const egl::Config *config,
                                        EGLClientBuffer shareHandle, EGLint width, EGLint height);
     ~SurfaceD3D() override;
@@ -76,7 +77,8 @@ class SurfaceD3D : public SurfaceImpl
                EGLint orientation,
                EGLint directComposition,
                EGLClientBuffer shareHandle,
-               EGLNativeWindowType window);
+               EGLNativeWindowType window,
+               EGLint colorSpace);
 
     egl::Error swapRect(EGLint x, EGLint y, EGLint width, EGLint height);
     egl::Error resetSwapChain(int backbufferWidth, int backbufferHeight);
@@ -105,6 +107,7 @@ class SurfaceD3D : public SurfaceImpl
     EGLint mSwapInterval;
 
     HANDLE mShareHandle;
+    EGLint mColorSpace;
 };
 
 

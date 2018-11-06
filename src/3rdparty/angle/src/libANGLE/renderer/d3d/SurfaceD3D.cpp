@@ -25,7 +25,7 @@ SurfaceD3D *SurfaceD3D::createOffscreen(RendererD3D *renderer, egl::Display *dis
                                         EGLint width, EGLint height)
 {
     return new SurfaceD3D(renderer, display, config, width, height, EGL_TRUE, 0, EGL_FALSE,
-                          shareHandle, NULL);
+                          shareHandle, NULL, EGL_GL_COLORSPACE_LINEAR_KHR); // TODO: pass real color space
 }
 
 SurfaceD3D *SurfaceD3D::createFromWindow(RendererD3D *renderer,
@@ -36,10 +36,11 @@ SurfaceD3D *SurfaceD3D::createFromWindow(RendererD3D *renderer,
                                          EGLint directComposition,
                                          EGLint width,
                                          EGLint height,
-                                         EGLint orientation)
+                                         EGLint orientation,
+                                         EGLint colorSpace)
 {
     return new SurfaceD3D(renderer, display, config, width, height, fixedSize, orientation,
-                          directComposition, static_cast<EGLClientBuffer>(0), window);
+                          directComposition, static_cast<EGLClientBuffer>(0), window, colorSpace);
 }
 
 SurfaceD3D::SurfaceD3D(RendererD3D *renderer,
@@ -51,7 +52,8 @@ SurfaceD3D::SurfaceD3D(RendererD3D *renderer,
                        EGLint orientation,
                        EGLint directComposition,
                        EGLClientBuffer shareHandle,
-                       EGLNativeWindowType window)
+                       EGLNativeWindowType window,
+                       EGLint colorSpace)
     : SurfaceImpl(),
       mRenderer(renderer),
       mDisplay(display),
@@ -66,7 +68,8 @@ SurfaceD3D::SurfaceD3D(RendererD3D *renderer,
       mWidth(width),
       mHeight(height),
       mSwapInterval(1),
-      mShareHandle(reinterpret_cast<HANDLE *>(shareHandle))
+      mShareHandle(reinterpret_cast<HANDLE *>(shareHandle)),
+      mColorSpace(colorSpace)
 {
     subclassWindow();
 }
@@ -118,6 +121,9 @@ egl::Error SurfaceD3D::releaseTexImage(EGLint)
 
 egl::Error SurfaceD3D::resetSwapChain()
 {
+    printf("### reset swap chain with CS 0x%X\n", mColorSpace);
+
+
     ASSERT(!mSwapChain);
 
     int width;

@@ -300,8 +300,15 @@ QWindowsOpenGLContext *QWindowsEGLStaticContext::createContext(QOpenGLContext *c
 void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *nativeConfig, int *err)
 {
     *err = 0;
+
+    const EGLint attributes[] = {
+        EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_SRGB_KHR,
+        EGL_NONE
+    };
+
     EGLSurface surface = libEGL.eglCreateWindowSurface(m_display, nativeConfig,
-                                                       static_cast<EGLNativeWindowType>(nativeWindow), 0);
+                                                       static_cast<EGLNativeWindowType>(nativeWindow),
+                                                       attributes);
     if (surface == EGL_NO_SURFACE) {
         *err = libEGL.eglGetError();
         qWarning("%s: Could not create the EGL window surface: 0x%x", __FUNCTION__, *err);
@@ -378,7 +385,6 @@ QSurfaceFormat QWindowsEGLStaticContext::formatFromConfig(EGLDisplay display, EG
     \internal
     \ingroup qt-lighthouse-win
 */
-
 QWindowsEGLContext::QWindowsEGLContext(QWindowsEGLStaticContext *staticContext,
                                        const QSurfaceFormat &format,
                                        QPlatformOpenGLContext *share)

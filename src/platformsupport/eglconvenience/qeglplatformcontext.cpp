@@ -270,6 +270,7 @@ void QEGLPlatformContext::initialize()
 // platforms without pbuffers.
 EGLSurface QEGLPlatformContext::createTemporaryOffscreenSurface()
 {
+    qDebug() << "*** QEGLPlatformContext::createTemporaryOffscreenSurface()";
     // Make the context current to ensure the GL version query works. This needs a surface too.
     const EGLint pbufferAttributes[] = {
         EGL_WIDTH, 1,

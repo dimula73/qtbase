@@ -40,7 +40,7 @@
 #include <QtGui/QOffscreenSurface>
 #include "qeglpbuffer_p.h"
 #include "qeglconvenience_p.h"
-
+#include <QDebug>
 QT_BEGIN_NAMESPACE
 
 /*!
@@ -62,6 +62,8 @@ QEGLPbuffer::QEGLPbuffer(EGLDisplay display, const QSurfaceFormat &format, QOffs
     , m_display(display)
     , m_pbuffer(EGL_NO_SURFACE)
 {
+    qDebug() << "*** creating pbuffer";
+
     m_hasSurfaceless = !flags.testFlag(QEGLPlatformContext::NoSurfaceless)
         && q_hasEglExtension(display, "EGL_KHR_surfaceless_context");
 
@@ -79,11 +81,15 @@ QEGLPbuffer::QEGLPbuffer(EGLDisplay display, const QSurfaceFormat &format, QOffs
 
     EGLConfig config = q_configFromGLFormat(m_display, m_format, false, EGL_PBUFFER_BIT);
 
+    qDebug() << "*** forcing pbuffer in linear color space";
+
+
     if (config) {
         const EGLint attributes[] = {
             EGL_WIDTH, offscreenSurface->size().width(),
             EGL_HEIGHT, offscreenSurface->size().height(),
             EGL_LARGEST_PBUFFER, EGL_FALSE,
+            EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_SRGB_KHR,
             EGL_NONE
         };
 

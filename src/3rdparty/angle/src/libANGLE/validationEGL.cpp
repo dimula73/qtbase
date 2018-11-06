@@ -402,6 +402,12 @@ Error ValidateCreateWindowSurface(Display *display, Config *config, EGLNativeWin
                   return Error(EGL_BAD_ATTRIBUTE);
               }
               break;
+          case EGL_GL_COLORSPACE:
+              if (!displayExtensions.colorspaceSelection)
+              {
+                  return Error(EGL_BAD_ATTRIBUTE);
+              }
+              break;
 
           default:
             return Error(EGL_BAD_ATTRIBUTE);
