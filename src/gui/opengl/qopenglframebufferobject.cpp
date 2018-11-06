@@ -514,6 +514,8 @@ void QOpenGLFramebufferObjectPrivate::init(QOpenGLFramebufferObject *, const QSi
 
 void QOpenGLFramebufferObjectPrivate::initTexture(int idx)
 {
+    qDebug() << "enter QOpenGLFramebufferObjectPrivate::initTexture";
+
     QOpenGLContext *ctx = QOpenGLContext::currentContext();
     GLuint texture = 0;
 
@@ -528,8 +530,12 @@ void QOpenGLFramebufferObjectPrivate::initTexture(int idx)
     ColorAttachment &color(colorAttachments[idx]);
 
     GLuint pixelType = GL_UNSIGNED_BYTE;
-    if (color.internalFormat == GL_RGB10_A2 || color.internalFormat == GL_RGB10)
+    if (color.internalFormat == GL_RGB10_A2 || color.internalFormat == GL_RGB10) {
         pixelType = GL_UNSIGNED_INT_2_10_10_10_REV;
+    } else if (color.internalFormat == GL_RGBA16F) {
+        pixelType = GL_HALF_FLOAT;
+    }
+
 
     funcs.glTexImage2D(target, 0, color.internalFormat, color.size.width(), color.size.height(), 0,
                        GL_RGBA, pixelType, NULL);
@@ -556,10 +562,12 @@ void QOpenGLFramebufferObjectPrivate::initTexture(int idx)
     } else {
         funcs.glDeleteTextures(1, &texture);
     }
+    qDebug() << "exit QOpenGLFramebufferObjectPrivate::initTexture";
 }
 
 void QOpenGLFramebufferObjectPrivate::initColorBuffer(int idx, GLint *samples)
 {
+    qDebug() << "enter QOpenGLFramebufferObjectPrivate::initColorBuffer";
     QOpenGLContext *ctx = QOpenGLContext::currentContext();
     GLuint color_buffer = 0;
 
@@ -591,11 +599,15 @@ void QOpenGLFramebufferObjectPrivate::initColorBuffer(int idx, GLint *samples)
     } else {
         funcs.glDeleteRenderbuffers(1, &color_buffer);
     }
+
+    qDebug() << "exit QOpenGLFramebufferObjectPrivate::initColorBuffer";
 }
 
 void QOpenGLFramebufferObjectPrivate::initDepthStencilAttachments(QOpenGLContext *ctx,
                                                                   QOpenGLFramebufferObject::Attachment attachment)
 {
+    qDebug() << "enter QOpenGLFramebufferObjectPrivate::initDepthStencilAttachments";
+
     // Use the same sample count for all attachments. format.samples() already contains
     // the actual number of samples for the color attachment and is not suitable. Use
     // requestedSamples instead.
@@ -743,6 +755,8 @@ void QOpenGLFramebufferObjectPrivate::initDepthStencilAttachments(QOpenGLContext
     QT_CHECK_GLERROR();
 
     format.setAttachment(fbo_attachment);
+
+    qDebug() << "exit QOpenGLFramebufferObjectPrivate::initDepthStencilAttachments";
 }
 
 /*!

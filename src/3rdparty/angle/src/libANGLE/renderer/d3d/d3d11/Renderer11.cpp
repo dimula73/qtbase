@@ -14,6 +14,8 @@
 #include <VersionHelpers.h>
 #endif
 
+#include <stdio.h>
+
 #include "common/tls.h"
 #include "common/utilities.h"
 #include "libANGLE/Buffer.h"
@@ -395,6 +397,7 @@ Renderer11::Renderer11(egl::Display *display)
     mRenderer11DeviceCaps.supportsClearView = false;
     mRenderer11DeviceCaps.supportsConstantBufferOffsets = false;
     mRenderer11DeviceCaps.supportsDXGI1_2 = false;
+    mRenderer11DeviceCaps.supportsDXGI1_4 = false;
     mRenderer11DeviceCaps.B5G6R5support = 0;
     mRenderer11DeviceCaps.B4G4R4A4support = 0;
     mRenderer11DeviceCaps.B5G5R5A1support = 0;
@@ -731,6 +734,8 @@ egl::Error Renderer11::initializeD3DDevice()
                                        static_cast<unsigned int>(mAvailableFeatureLevels.size()),
                                        D3D11_SDK_VERSION, &mDevice,
                                        &(mRenderer11DeviceCaps.featureLevel), &mDeviceContext);
+
+            printf("*** create device res: %d, fl: 0x%X, 11.1: 0x%X\n", mRenderer11DeviceCaps.featureLevel, D3D_FEATURE_LEVEL_11_1);
         }
 
         if (!mDevice || FAILED(result))
@@ -847,6 +852,7 @@ void Renderer11::initializeDevice()
 
     // Gather stats on DXGI and D3D feature level
     ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.SupportsDXGI1_2", mRenderer11DeviceCaps.supportsDXGI1_2);
+    ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.SupportsDXGI1_4", mRenderer11DeviceCaps.supportsDXGI1_4);
 
     ANGLEFeatureLevel angleFeatureLevel = GetANGLEFeatureLevel(mRenderer11DeviceCaps.featureLevel);
 
@@ -902,16 +908,30 @@ void Renderer11::populateRenderer11DeviceCaps()
         mRenderer11DeviceCaps.B5G5R5A1support = 0;
     }
 
+
+    printf("XXX testing for DXGI1.2\n");
 #if defined(ANGLE_ENABLE_D3D11_1)
     IDXGIAdapter2 *dxgiAdapter2 = d3d11::DynamicCastComObject<IDXGIAdapter2>(mDxgiAdapter);
     mRenderer11DeviceCaps.supportsDXGI1_2 = (dxgiAdapter2 != nullptr);
+
+    printf("XXX support DXGI1.2: 0x%X\n", dxgiAdapter2);
+
     SafeRelease(dxgiAdapter2);
+
+    IDXGIAdapter3 *dxgiAdapter3 = d3d11::DynamicCastComObject<IDXGIAdapter3>(mDxgiAdapter);
+    mRenderer11DeviceCaps.supportsDXGI1_4 = (dxgiAdapter3 != nullptr);
+    SafeRelease(dxgiAdapter3);
 #endif
 }
 
 egl::ConfigSet Renderer11::generateConfigs() const
 {
+    printf("****generating config\n");
+
     std::vector<GLenum> colorBufferFormats;
+
+    // 64-bit supported formats
+    colorBufferFormats.push_back(GL_RGBA16F);
 
     // 32-bit supported formats
     colorBufferFormats.push_back(GL_BGRA8_EXT);
@@ -979,7 +999,8 @@ egl::ConfigSet Renderer11::generateConfigs() const
             config.alphaMaskSize      = 0;
             config.bindToTextureRGB   = (colorBufferFormatInfo.format == GL_RGB);
             config.bindToTextureRGBA = (colorBufferFormatInfo.format == GL_RGBA ||
-                                        colorBufferFormatInfo.format == GL_BGRA_EXT);
+                                        colorBufferFormatInfo.format == GL_BGRA_EXT ||
+                                        colorBufferFormatInfo.format == GL_RGBA16F);
             config.colorBufferType = EGL_RGB_BUFFER;
             config.configID        = static_cast<EGLint>(configs.size() + 1);
             // Can only support a conformant ES2 with feature level greater than 10.0.
@@ -1062,6 +1083,11 @@ void Renderer11::generateDisplayExtensions(egl::DisplayExtensions *outExtensions
 
     outExtensions->flexibleSurfaceCompatibility = true;
     outExtensions->directComposition            = !!mDCompModule;
+
+    // TODO: really check if supported by the display!
+    outExtensions->colorspaceSelection = true;
+    outExtensions->colorspaceBt2020Linear = true;
+    outExtensions->colorspaceBt2020PQ = true;
 }
 
 gl::Error Renderer11::flush()
