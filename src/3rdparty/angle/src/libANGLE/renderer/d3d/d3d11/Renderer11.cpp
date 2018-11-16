@@ -734,8 +734,6 @@ egl::Error Renderer11::initializeD3DDevice()
                                        static_cast<unsigned int>(mAvailableFeatureLevels.size()),
                                        D3D11_SDK_VERSION, &mDevice,
                                        &(mRenderer11DeviceCaps.featureLevel), &mDeviceContext);
-
-            printf("*** create device res: %d, fl: 0x%X, 11.1: 0x%X\n", mRenderer11DeviceCaps.featureLevel, D3D_FEATURE_LEVEL_11_1);
         }
 
         if (!mDevice || FAILED(result))
@@ -909,13 +907,9 @@ void Renderer11::populateRenderer11DeviceCaps()
     }
 
 
-    printf("XXX testing for DXGI1.2\n");
 #if defined(ANGLE_ENABLE_D3D11_1)
     IDXGIAdapter2 *dxgiAdapter2 = d3d11::DynamicCastComObject<IDXGIAdapter2>(mDxgiAdapter);
     mRenderer11DeviceCaps.supportsDXGI1_2 = (dxgiAdapter2 != nullptr);
-
-    printf("XXX support DXGI1.2: 0x%X\n", dxgiAdapter2);
-
     SafeRelease(dxgiAdapter2);
 
     IDXGIAdapter3 *dxgiAdapter3 = d3d11::DynamicCastComObject<IDXGIAdapter3>(mDxgiAdapter);
@@ -926,8 +920,6 @@ void Renderer11::populateRenderer11DeviceCaps()
 
 egl::ConfigSet Renderer11::generateConfigs() const
 {
-    printf("****generating config\n");
-
     std::vector<GLenum> colorBufferFormats;
 
     // 64-bit supported formats
@@ -936,6 +928,7 @@ egl::ConfigSet Renderer11::generateConfigs() const
     // 32-bit supported formats
     colorBufferFormats.push_back(GL_BGRA8_EXT);
     colorBufferFormats.push_back(GL_RGBA8_OES);
+    colorBufferFormats.push_back(GL_RGB10_A2);
 
     // 24-bit supported formats
     colorBufferFormats.push_back(GL_RGB8_OES);
@@ -959,6 +952,8 @@ egl::ConfigSet Renderer11::generateConfigs() const
 
     const gl::Caps &rendererCaps = getRendererCaps();
     const gl::TextureCapsMap &rendererTextureCaps = getRendererTextureCaps();
+
+
 
     const EGLint optimalSurfaceOrientation =
         mPresentPathFastEnabled ? 0 : EGL_SURFACE_ORIENTATION_INVERT_Y_ANGLE;
@@ -999,8 +994,7 @@ egl::ConfigSet Renderer11::generateConfigs() const
             config.alphaMaskSize      = 0;
             config.bindToTextureRGB   = (colorBufferFormatInfo.format == GL_RGB);
             config.bindToTextureRGBA = (colorBufferFormatInfo.format == GL_RGBA ||
-                                        colorBufferFormatInfo.format == GL_BGRA_EXT ||
-                                        colorBufferFormatInfo.format == GL_RGBA16F);
+                                        colorBufferFormatInfo.format == GL_BGRA_EXT);
             config.colorBufferType = EGL_RGB_BUFFER;
             config.configID        = static_cast<EGLint>(configs.size() + 1);
             // Can only support a conformant ES2 with feature level greater than 10.0.
@@ -1084,9 +1078,9 @@ void Renderer11::generateDisplayExtensions(egl::DisplayExtensions *outExtensions
     outExtensions->flexibleSurfaceCompatibility = true;
     outExtensions->directComposition            = !!mDCompModule;
 
-    // TODO: really check if supported by the display!
-    outExtensions->colorspaceSelection = true;
-    outExtensions->colorspaceBt2020Linear = true;
+    // color space selection is always supported in DirectX11
+    outExtensions->colorspaceSRGB = true;
+    outExtensions->colorspaceSCRGBLinear = true;
     outExtensions->colorspaceBt2020PQ = true;
 }
 
@@ -1143,10 +1137,11 @@ SwapChainD3D *Renderer11::createSwapChain(NativeWindow nativeWindow,
                                           HANDLE shareHandle,
                                           GLenum backBufferFormat,
                                           GLenum depthBufferFormat,
-                                          EGLint orientation)
+                                          EGLint orientation,
+                                          EGLint colorSpace)
 {
     return new SwapChain11(this, nativeWindow, shareHandle, backBufferFormat, depthBufferFormat,
-                           orientation);
+                           orientation, colorSpace);
 }
 
 CompilerImpl *Renderer11::createCompiler()

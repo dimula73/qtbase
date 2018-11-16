@@ -36,7 +36,7 @@ class SurfaceD3D : public SurfaceImpl
                                         EGLint orientation,
                                         EGLint colorSpace);
     static SurfaceD3D *createOffscreen(RendererD3D *renderer, egl::Display *display, const egl::Config *config,
-                                       EGLClientBuffer shareHandle, EGLint width, EGLint height);
+                                       EGLClientBuffer shareHandle, EGLint width, EGLint height, EGLint colorSpace);
     ~SurfaceD3D() override;
     void releaseSwapChain();
 
@@ -92,6 +92,7 @@ class SurfaceD3D : public SurfaceImpl
 
     bool mFixedSize;
     GLint mOrientation;
+    EGLint mColorSpace;
 
     GLenum mRenderTargetFormat;
     GLenum mDepthStencilFormat;
@@ -107,7 +108,6 @@ class SurfaceD3D : public SurfaceImpl
     EGLint mSwapInterval;
 
     HANDLE mShareHandle;
-    EGLint mColorSpace;
 };
 
 

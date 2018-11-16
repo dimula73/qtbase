@@ -658,8 +658,11 @@ SwapChainD3D *Renderer9::createSwapChain(NativeWindow nativeWindow,
                                          HANDLE shareHandle,
                                          GLenum backBufferFormat,
                                          GLenum depthBufferFormat,
-                                         EGLint orientation)
+                                         EGLint orientation,
+                                         EGLint colorSpace)
 {
+    // D3D9 implementation does not support choosing color space of the surface
+    UNUSED_VARIABLE(colorSpace);
     return new SwapChain9(this, nativeWindow, shareHandle, backBufferFormat, depthBufferFormat,
                           orientation);
 }

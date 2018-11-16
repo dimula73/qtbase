@@ -297,12 +297,30 @@ QWindowsOpenGLContext *QWindowsEGLStaticContext::createContext(QOpenGLContext *c
     return new QWindowsEGLContext(this, context->format(), context->shareHandle());
 }
 
-void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *nativeConfig, int *err)
+void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *nativeConfig,
+                                                    QSurfaceFormat::ColorSpace colorSpace, int *err)
 {
     *err = 0;
 
+    EGLint eglColorSpace = EGL_GL_COLORSPACE_LINEAR_KHR;
+
+    switch (colorSpace) {
+    case QSurfaceFormat::DefaultColorSpace:
+        break;
+    case QSurfaceFormat::sRGBColorSpace:
+        eglColorSpace = EGL_GL_COLORSPACE_SRGB_KHR;
+        break;
+    case QSurfaceFormat::scRGBColorSpace:
+        eglColorSpace = EGL_GL_COLORSPACE_SCRGB_LINEAR_EXT;
+        break;
+    case QSurfaceFormat::bt2020PQColorSpace:
+        eglColorSpace = EGL_GL_COLORSPACE_BT2020_PQ_EXT;
+        break;
+    }
+
+    // TODO: check if the attribute is actually suportef by the implementation
     const EGLint attributes[] = {
-        EGL_GL_COLORSPACE, EGL_GL_COLORSPACE_SRGB_KHR,
+        EGL_GL_COLORSPACE, eglColorSpace,
         EGL_NONE
     };
 
@@ -356,6 +374,7 @@ QSurfaceFormat QWindowsEGLStaticContext::formatFromConfig(EGLDisplay display, EG
     format.setSamples(sampleCount);
     format.setStereo(false);
     format.setSwapInterval(referenceFormat.swapInterval());
+    format.setColorSpace(referenceFormat.colorSpace());
 
     // Clear the EGL error state because some of the above may
     // have errored out because the attribute is not applicable
@@ -483,6 +502,8 @@ bool QWindowsEGLContext::makeCurrent(QPlatformSurface *surface)
             // Simulate context loss as the context is useless.
             QWindowsEGLStaticContext::libEGL.eglDestroyContext(m_eglDisplay, m_eglContext);
             m_eglContext = EGL_NO_CONTEXT;
+        } else if (err == EGL_BAD_MATCH) {
+            qCDebug(lcQpaGl) << "Got bad match in createWindowSurface() for context" << this << "Check color space configuration.";
         }
         return false;
     }

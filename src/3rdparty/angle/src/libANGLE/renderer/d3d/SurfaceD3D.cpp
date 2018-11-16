@@ -22,10 +22,10 @@ namespace rx
 {
 
 SurfaceD3D *SurfaceD3D::createOffscreen(RendererD3D *renderer, egl::Display *display, const egl::Config *config, EGLClientBuffer shareHandle,
-                                        EGLint width, EGLint height)
+                                        EGLint width, EGLint height, EGLint colorSpace)
 {
     return new SurfaceD3D(renderer, display, config, width, height, EGL_TRUE, 0, EGL_FALSE,
-                          shareHandle, NULL, EGL_GL_COLORSPACE_LINEAR_KHR); // TODO: pass real color space
+                          shareHandle, NULL, colorSpace);
 }
 
 SurfaceD3D *SurfaceD3D::createFromWindow(RendererD3D *renderer,
@@ -41,6 +41,27 @@ SurfaceD3D *SurfaceD3D::createFromWindow(RendererD3D *renderer,
 {
     return new SurfaceD3D(renderer, display, config, width, height, fixedSize, orientation,
                           directComposition, static_cast<EGLClientBuffer>(0), window, colorSpace);
+}
+
+GLenum renderTargetFormatFromColorSpace(egl::Display *display, GLenum baseFormat, EGLint colorSpace)
+{
+    GLenum result = baseFormat;
+
+    /**
+     * If sRGB extension is supported, we should change the surface format
+     * to a specific one that does support automated gamma conversion.
+     *
+     * TODO: openGL doesn't support BGRA-sRGB texture format, so creation of
+     *       textures in this format technically is not supported!
+     */
+    if (display->getExtensions().colorspaceSRGB &&
+        baseFormat == GL_RGBA8_OES &&
+        colorSpace == EGL_GL_COLORSPACE_SRGB_KHR)
+    {
+        result = GL_SRGB8_ALPHA8;
+    }
+
+    return result;
 }
 
 SurfaceD3D::SurfaceD3D(RendererD3D *renderer,
@@ -59,7 +80,8 @@ SurfaceD3D::SurfaceD3D(RendererD3D *renderer,
       mDisplay(display),
       mFixedSize(fixedSize == EGL_TRUE),
       mOrientation(orientation),
-      mRenderTargetFormat(config->renderTargetFormat),
+      mColorSpace(colorSpace),
+      mRenderTargetFormat(renderTargetFormatFromColorSpace(display, config->renderTargetFormat, colorSpace)),
       mDepthStencilFormat(config->depthStencilFormat),
       mSwapChain(nullptr),
       mSwapIntervalDirty(true),
@@ -68,8 +90,7 @@ SurfaceD3D::SurfaceD3D(RendererD3D *renderer,
       mWidth(width),
       mHeight(height),
       mSwapInterval(1),
-      mShareHandle(reinterpret_cast<HANDLE *>(shareHandle)),
-      mColorSpace(colorSpace)
+      mShareHandle(reinterpret_cast<HANDLE *>(shareHandle))
 {
     subclassWindow();
 }
@@ -150,7 +171,7 @@ egl::Error SurfaceD3D::resetSwapChain()
     }
 
     mSwapChain = mRenderer->createSwapChain(mNativeWindow, mShareHandle, mRenderTargetFormat,
-                                            mDepthStencilFormat, mOrientation);
+                                            mDepthStencilFormat, mOrientation, mColorSpace);
     if (!mSwapChain)
     {
         return egl::Error(EGL_BAD_ALLOC);

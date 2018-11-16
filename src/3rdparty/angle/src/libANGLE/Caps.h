@@ -484,10 +484,10 @@ struct DisplayExtensions
     bool createContextNoError;
 
     // EGL_KHR_gl_colorspace
-    bool colorspaceSelection;
+    bool colorspaceSRGB;
 
-    // EGL_EXT_gl_colorspace_bt2020_linear
-    bool colorspaceBt2020Linear;
+    // EGL_EXT_gl_colorspace_scrgb_linear
+    bool colorspaceSCRGBLinear;
 
     // EGL_EXT_gl_colorspace_bt2020_pq
     bool colorspaceBt2020PQ;

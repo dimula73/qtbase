@@ -195,8 +195,9 @@ SurfaceImpl *DisplayD3D::createPbufferSurface(const egl::Config *configuration,
 
     EGLint width = attribs.get(EGL_WIDTH, 0);
     EGLint height = attribs.get(EGL_HEIGHT, 0);
+    EGLint colorSpace = attribs.get(EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_LINEAR_KHR);
 
-    return SurfaceD3D::createOffscreen(mRenderer, mDisplay, configuration, nullptr, width, height);
+    return SurfaceD3D::createOffscreen(mRenderer, mDisplay, configuration, nullptr, width, height, colorSpace);
 }
 
 SurfaceImpl *DisplayD3D::createPbufferFromClientBuffer(const egl::Config *configuration,
@@ -207,9 +208,10 @@ SurfaceImpl *DisplayD3D::createPbufferFromClientBuffer(const egl::Config *config
 
     EGLint width = attribs.get(EGL_WIDTH, 0);
     EGLint height = attribs.get(EGL_HEIGHT, 0);
+    EGLint colorSpace = attribs.get(EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_LINEAR_KHR);
 
     return SurfaceD3D::createOffscreen(
-        mRenderer, mDisplay, configuration, shareHandle, width, height);
+        mRenderer, mDisplay, configuration, shareHandle, width, height, colorSpace);
 }
 
 SurfaceImpl *DisplayD3D::createPixmapSurface(const egl::Config *configuration,

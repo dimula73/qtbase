@@ -25,7 +25,8 @@ class SwapChain11 : public SwapChainD3D
                 HANDLE shareHandle,
                 GLenum backBufferFormat,
                 GLenum depthBufferFormat,
-                EGLint orientation);
+                EGLint orientation,
+                EGLint colorSpace);
     virtual ~SwapChain11();
 
     EGLint resize(EGLint backbufferWidth, EGLint backbufferHeight);
@@ -69,6 +70,7 @@ class SwapChain11 : public SwapChainD3D
     EGLint mWidth;
     EGLint mHeight;
     const EGLint mOrientation;
+    EGLint mColorSpace;
     bool mAppCreatedShareHandle;
     unsigned int mSwapInterval;
     bool mPassThroughResourcesInit;

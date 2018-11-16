@@ -49,12 +49,14 @@ SwapChain11::SwapChain11(Renderer11 *renderer,
                          HANDLE shareHandle,
                          GLenum backBufferFormat,
                          GLenum depthBufferFormat,
-                         EGLint orientation)
+                         EGLint orientation,
+                         EGLint colorSpace)
     : SwapChainD3D(nativeWindow, shareHandle, backBufferFormat, depthBufferFormat),
       mRenderer(renderer),
       mWidth(-1),
       mHeight(-1),
       mOrientation(orientation),
+      mColorSpace(colorSpace),
       mAppCreatedShareHandle(mShareHandle != nullptr),
       mSwapInterval(0),
       mPassThroughResourcesInit(false),
@@ -493,6 +495,7 @@ DXGI_FORMAT SwapChain11::getSwapChainNativeFormat() const
     // MSDN https://msdn.microsoft.com/en-us/library/windows/desktop/bb173064(v=vs.85).aspx
     return (mOffscreenRenderTargetFormat == GL_BGRA8_EXT) ? DXGI_FORMAT_B8G8R8A8_UNORM :
            (mOffscreenRenderTargetFormat == GL_RGBA16F) ? DXGI_FORMAT_R16G16B16A16_FLOAT :
+           (mOffscreenRenderTargetFormat == GL_RGB10_A2) ? DXGI_FORMAT_R10G10B10A2_UNORM :
            DXGI_FORMAT_R8G8B8A8_UNORM;
 }
 
@@ -564,78 +567,57 @@ EGLint SwapChain11::reset(int backbufferWidth, int backbufferHeight, EGLint swap
 #endif
         }
 
-        printf("*** EGL format: 0x%X\n", mOffscreenRenderTargetFormat);
-        printf("*** Native format: 0x%X\n", getSwapChainNativeFormat());
-        printf("*** Supports DXGI 1.4: %d\n", (int) mRenderer->getRenderer11DeviceCaps().supportsDXGI1_4);
-
         if (mRenderer->getRenderer11DeviceCaps().supportsDXGI1_4)
         {
 #if defined(ANGLE_ENABLE_D3D11_1)
             IDXGISwapChain3 *swapChain3 = d3d11::DynamicCastComObject<IDXGISwapChain3>(mSwapChain);
 
-            std::vector<DXGI_COLOR_SPACE_TYPE> colorSpaces;
+            printf("*** EGL colorSpace: 0x%X\n", mColorSpace);
+            printf("*** EGL format: 0x%X\n", mOffscreenRenderTargetFormat);
+            printf("*** Native format: 0x%X\n", getSwapChainNativeFormat());
 
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P709);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_STUDIO_G22_NONE_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RESERVED);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P601);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P709);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_STUDIO_G2084_NONE_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_TOPLEFT_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P2020);
-            colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_GHLG_TOPLEFT_P2020);
-            //colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_STUDIO_G24_NONE_P2020);
-            //colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_FULL_GHLG_TOPLEFT_P2020);
-            //colorSpaces.push_back(DXGI_COLOR_SPACE_RGB_STUDIO_G24_NONE_P709);
-            //colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P709);
-            //colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_LEFT_P2020);
-            //colorSpaces.push_back(DXGI_COLOR_SPACE_YCBCR_STUDIO_G24_TOPLEFT_P2020);
+            if (mColorSpace != EGL_GL_COLORSPACE_LINEAR_KHR) {
+                DXGI_COLOR_SPACE_TYPE nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+                switch (mColorSpace)
+                {
+                case EGL_GL_COLORSPACE_SRGB_KHR:
+                    nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+                    break;
+                case EGL_GL_COLORSPACE_SCRGB_LINEAR_EXT:
+                    nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                    break;
+                case EGL_GL_COLORSPACE_BT2020_PQ_EXT:
+                    nativeColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    break;
+                default:
+                    ASSERT(0 && "Unsupported colorspace requested");
+                }
 
-            for (auto it = colorSpaces.begin(); it != colorSpaces.end(); ++it) {
+                printf("*** Native colorSpace: 0x%X\n", nativeColorSpace);
+
                 UINT supported = 0;
-                HRESULT result = swapChain3->CheckColorSpaceSupport(*it, &supported);
-                printf("*** Result for CS 0x%X: 0x%X, support: 0x%X\n", (int)*it, result, supported);
-            }
+                result = swapChain3->CheckColorSpaceSupport(nativeColorSpace, &supported);
+                ASSERT(SUCCEEDED(result));
+                if (!(supported & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT)) {
+                    SafeRelease(swapChain3);
+                    return EGL_BAD_MATCH;
+                }
 
-            printf("*** Setting color space for 0x%X\n", reinterpret_cast<uintptr_t>(swapChain3));
-
-            //HRESULT result = swapChain3->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709);
-            HRESULT result = swapChain3->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
-            printf("*** Result p2020 0x%X\n", result);
-
-            if (FAILED(result)) {
-                result = swapChain3->SetColorSpace1(DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709);
-                printf("*** Result p709 0x%X\n", result);
+                result = swapChain3->SetColorSpace1(nativeColorSpace);
+                ASSERT(SUCCEEDED(result));
             }
 
             SafeRelease(swapChain3);
 
+#if 0
+
             IDXGISwapChain4 *swapChain4 = d3d11::DynamicCastComObject<IDXGISwapChain4>(mSwapChain);
-            printf("*** SwapChain4 0x%X\n", reinterpret_cast<uintptr_t>(swapChain4));
 
             DXGI_HDR_METADATA_HDR10 md;
-            //md.RedPrimary[0] = 0.680 * 50000;
-            //md.RedPrimary[1] = 0.320 * 50000;
-            //md.GreenPrimary[0] = 0.265 * 50000;
-            //md.GreenPrimary[1] = 0.690 * 50000;
-
-            // NOTE: swap red and green primaries to be able to see at
-            // least any difference! :)
-            md.GreenPrimary[0] = 0.680 * 50000;
-            md.GreenPrimary[1] = 0.320 * 50000;
-            md.RedPrimary[0] = 0.265 * 50000;
-            md.RedPrimary[1] = 0.690 * 50000;
-
+            md.RedPrimary[0] = 0.680 * 50000;
+            md.RedPrimary[1] = 0.320 * 50000;
+            md.GreenPrimary[0] = 0.265 * 50000;
+            md.GreenPrimary[1] = 0.690 * 50000;
             md.BluePrimary[0] = 0.150 * 50000;
             md.BluePrimary[1] = 0.060 * 50000;
             md.WhitePoint[0] = 0.3127 * 50000;
@@ -646,8 +628,9 @@ EGLint SwapChain11::reset(int backbufferWidth, int backbufferHeight, EGLint swap
             md.MaxFrameAverageLightLevel = 200;
             result = swapChain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(md), &md);
             printf("*** Result hdr 0x%X\n", result);
-
             SafeRelease(swapChain4);
+#endif
+
 #endif
         }
 
@@ -656,7 +639,25 @@ EGLint SwapChain11::reset(int backbufferWidth, int backbufferHeight, EGLint swap
         ASSERT(SUCCEEDED(result));
         d3d11::SetDebugName(mBackBufferTexture, "Back buffer texture");
 
-        result = device->CreateRenderTargetView(mBackBufferTexture, NULL, &mBackBufferRTView);
+        D3D11_RENDER_TARGET_VIEW_DESC offscreenRTVDesc;
+        offscreenRTVDesc.Format = getSwapChainNativeFormat();
+
+        if (mColorSpace == EGL_GL_COLORSPACE_SRGB_KHR) {
+            if (offscreenRTVDesc.Format == DXGI_FORMAT_R8G8B8A8_UNORM) {
+                offscreenRTVDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+            }
+
+            if (offscreenRTVDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM) {
+                offscreenRTVDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+            }
+        }
+
+        printf("*** Render target format: 0x%X\n", offscreenRTVDesc.Format);
+
+        offscreenRTVDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+        offscreenRTVDesc.Texture2D.MipSlice = 0;
+
+        result = device->CreateRenderTargetView(mBackBufferTexture, &offscreenRTVDesc, &mBackBufferRTView);
         ASSERT(SUCCEEDED(result));
         d3d11::SetDebugName(mBackBufferRTView, "Back buffer render target");
 

@@ -145,7 +145,8 @@ class RendererD3D : public Renderer, public BufferFactoryD3D
                                           HANDLE shareHandle,
                                           GLenum backBufferFormat,
                                           GLenum depthBufferFormat,
-                                          EGLint orientation) = 0;
+                                          EGLint orientation,
+                                          EGLint colorSpace) = 0;
 
     virtual gl::Error generateSwizzle(gl::Texture *texture) = 0;
     virtual gl::Error setSamplerState(gl::SamplerType type, int index, gl::Texture *texture, const gl::SamplerState &sampler) = 0;

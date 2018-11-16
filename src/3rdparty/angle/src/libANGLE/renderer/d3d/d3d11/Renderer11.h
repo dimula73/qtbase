@@ -119,7 +119,8 @@ class Renderer11 : public RendererD3D
                                   HANDLE shareHandle,
                                   GLenum backBufferFormat,
                                   GLenum depthBufferFormat,
-                                  EGLint orientation) override;
+                                  EGLint orientation,
+                                  EGLint colorSpace) override;
 
     CompilerImpl *createCompiler() override;
 
