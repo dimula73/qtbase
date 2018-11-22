@@ -349,8 +349,9 @@ static inline QOpenGLTextureBlitterPrivate::ProgramIndex targetToProgramIndex(GL
 {
     switch (target) {
     case GL_TEXTURE_2D: {
-        QOpenGLTextureBlitterPrivate::ProgramIndex index(
-                 int(QOpenGLTextureBlitterPrivate::TEXTURE_2D) + colorSpaceConversion);
+        QOpenGLTextureBlitterPrivate::ProgramIndex index =
+            QOpenGLTextureBlitterPrivate::ProgramIndex(
+                int(QOpenGLTextureBlitterPrivate::TEXTURE_2D) + colorSpaceConversion);
         return index;
     }
     case GL_TEXTURE_EXTERNAL_OES:
