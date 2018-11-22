@@ -131,13 +131,59 @@ static const char vertex_shader[] =
     "}";
 
 static const char fragment_shader[] =
-    "varying highp vec2 uv;"
-    "uniform sampler2D textureSampler;"
-    "uniform bool swizzle;"
-    "uniform highp float opacity;"
+    "varying highp vec2 uv;\n"
+    "uniform sampler2D textureSampler;\n"
+    "uniform bool swizzle;\n"
+    "uniform highp float opacity;\n"
+    "#if defined SRGB_TO_SCRGB || defined SRGB_TO_BT2020PQ\n"
+    "highp vec4 sRgbToLinear(highp vec4 sRGB)\n"
+    "{\n"
+    "   bvec4 cutoff = lessThan(sRGB, vec4(0.04045));\n"
+    "   const highp vec2 a1 = vec2(0.055, 0.0);\n"
+    "   const highp vec2 c2 = vec2(1.055, 1.0);\n"
+    "   const highp vec2 m3 = vec2(2.4, 1.0);\n"
+    "   const highp vec2 c4 = vec2(12.92, 1.0);\n"
+    "   highp vec4 higher = pow((sRGB + a1.xxxy) / c2.xxxy, m3.xxxy);\n"
+    "   highp vec4 lower = sRGB / c4.xxxy;\n"
+    "   return mix(higher, lower, vec4(cutoff));\n"
+    "}\n"
+    "#endif\n"
+    "#if defined SRGB_TO_BT2020PQ\n"
+    "highp vec4 applySmpte2084Curve(highp vec4 L)\n"
+    "{"
+    "   const highp vec2 m1 = vec2(2610.0 / 4096.0 / 4.0, 1.0);\n"
+    "   const highp vec2 m2 = vec2(2523.0 / 4096.0 * 128.0, 1.0);\n"
+    "   const highp vec2 a1 = vec2(3424.0 / 4096.0, 0.0);\n"
+    "   const highp vec2 c2 = vec2(2413.0 / 4096.0 * 32.0, 1.0);\n"
+    "   const highp vec2 c3 = vec2(2392.0 / 4096.0 * 32.0, 1.0);\n"
+    "   const highp vec2 a4 = vec2(1.0, 0.0);\n"
+    "   highp vec4 Lp = pow(L, m1.xxxy);\n"
+    "   highp vec4 res = pow((a1.xxxy + c2.xxxy * Lp) / (a4.xxxy + c3.xxxy * Lp), m2.xxxy);\n"
+    "   return res;"
+    "}\n"
+    ""
+    "highp vec4 sRgbToBt2020pq(highp vec4 value)\n"
+    "{\n"
+    "   value = sRgbToLinear(value);"
+    "   const highp mat4 convMat = "
+    "      mat4(0.627402, 0.069095, 0.016394, 0.0,"
+    "           0.329292, 0.919544, 0.088028, 0.0,"
+    "           0.043306, 0.011360, 0.895578, 0.0,"
+    "           0.0,      0.0,      0.0,      1.0);"
+    ""
+    "   value = convMat * value;\n"
+    "   return applySmpte2084Curve(0.008 * value);"
+    "}\n"
+    "#endif\n"
+    "\n"
     "void main() {"
     "   highp vec4 tmpFragColor = texture2D(textureSampler,uv);"
-    "   tmpFragColor.a *= opacity;"
+    "   tmpFragColor.a *= opacity;\n"
+    "#if defined SRGB_TO_SCRGB\n"
+    "   tmpFragColor = sRgbToLinear(tmpFragColor);\n"
+    "#elif defined SRGB_TO_BT2020PQ\n"
+    "   tmpFragColor = sRgbToBt2020pq(tmpFragColor);\n"
+    "#endif\n"
     "   gl_FragColor = swizzle ? tmpFragColor.bgra : tmpFragColor;"
     "}";
 
@@ -187,6 +233,23 @@ private:
     GLenum m_target;
 };
 
+class ColorSpaceConversion : public QPair<QSurfaceFormat::ColorSpace, QSurfaceFormat::ColorSpace>
+{
+public:
+    ColorSpaceConversion() { };
+    ColorSpaceConversion(QSurfaceFormat::ColorSpace srcColorSpace,
+                         QSurfaceFormat::ColorSpace dstColorSpace)
+        : QPair(srcColorSpace, dstColorSpace)
+    { }
+
+    QSurfaceFormat::ColorSpace source() const {
+        return first;
+    }
+    QSurfaceFormat::ColorSpace destination() const {
+        return second;
+    }
+};
+
 class QOpenGLTextureBlitterPrivate
 {
 public:
@@ -197,16 +260,25 @@ public:
     };
 
     enum ProgramIndex {
-        TEXTURE_2D,
-        TEXTURE_EXTERNAL_OES
+        TEXTURE_2D = 0,
+        TEXTURE_2D_SRGB_TO_SCRGB,
+        TEXTURE_2D_SRGB_TO_BT2020PQ,
+        TEXTURE_EXTERNAL_OES,
+
+        PROGRAM_COUNT
     };
 
     QOpenGLTextureBlitterPrivate() :
         swizzle(false),
         opacity(1.0f),
         vao(new QOpenGLVertexArrayObject),
-        currentTarget(TEXTURE_2D)
-    { }
+        currentTarget(GL_NONE),
+        colorSpaceConversion(0)
+    {
+        supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::DefaultColorSpace, QSurfaceFormat::DefaultColorSpace);
+        supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::sRGBColorSpace, QSurfaceFormat::scRGBColorSpace);
+        supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::sRGBColorSpace, QSurfaceFormat::bt2020PQColorSpace);
+    }
 
     bool buildProgram(ProgramIndex idx, const char *vs, const char *fs);
 
@@ -214,6 +286,7 @@ public:
     void blit(GLuint texture, const QMatrix4x4 &vertexTransform, QOpenGLTextureBlitter::Origin origin);
 
     void prepareProgram(const QMatrix4x4 &vertexTransform);
+    int calcColorSpaceConversionIndex(QSurfaceFormat::ColorSpace srcColorSpace, QSurfaceFormat::ColorSpace dstColorSpace);
 
     QOpenGLBuffer vertexBuffer;
     QOpenGLBuffer textureBuffer;
@@ -239,18 +312,47 @@ public:
         bool swizzle;
         float opacity;
         TextureMatrixUniform textureMatrixUniformState;
-    } programs[2];
+    } programs[PROGRAM_COUNT];
     bool swizzle;
     float opacity;
     QScopedPointer<QOpenGLVertexArrayObject> vao;
     GLenum currentTarget;
+
+    int colorSpaceConversion;
+    QVector<ColorSpaceConversion> supportedColorSpaceConversions;
 };
 
-static inline QOpenGLTextureBlitterPrivate::ProgramIndex targetToProgramIndex(GLenum target)
+int QOpenGLTextureBlitterPrivate::calcColorSpaceConversionIndex(QSurfaceFormat::ColorSpace srcColorSpace, QSurfaceFormat::ColorSpace dstColorSpace)
+{
+    // TODO: auto-detect destination color space of the surface
+    //       in case of default color space
+
+    // disable color management if at least one of the color
+    // spaces is declared as default
+    if (srcColorSpace == QSurfaceFormat::DefaultColorSpace ||
+        dstColorSpace == QSurfaceFormat::DefaultColorSpace) {
+
+        return 0;
+    }
+
+    // disable color management if source and destination color
+    // spaces are the same
+    if (srcColorSpace == dstColorSpace) {
+        return 0;
+    }
+
+    ColorSpaceConversion conversion(srcColorSpace, dstColorSpace);
+    return supportedColorSpaceConversions.indexOf(conversion);
+}
+
+static inline QOpenGLTextureBlitterPrivate::ProgramIndex targetToProgramIndex(GLenum target, int colorSpaceConversion)
 {
     switch (target) {
-    case GL_TEXTURE_2D:
-        return QOpenGLTextureBlitterPrivate::TEXTURE_2D;
+    case GL_TEXTURE_2D: {
+        QOpenGLTextureBlitterPrivate::ProgramIndex index(
+                 int(QOpenGLTextureBlitterPrivate::TEXTURE_2D) + colorSpaceConversion);
+        return index;
+    }
     case GL_TEXTURE_EXTERNAL_OES:
         return QOpenGLTextureBlitterPrivate::TEXTURE_EXTERNAL_OES;
     default:
@@ -261,7 +363,7 @@ static inline QOpenGLTextureBlitterPrivate::ProgramIndex targetToProgramIndex(GL
 
 void QOpenGLTextureBlitterPrivate::prepareProgram(const QMatrix4x4 &vertexTransform)
 {
-    Program *program = &programs[targetToProgramIndex(currentTarget)];
+    Program *program = &programs[targetToProgramIndex(currentTarget, colorSpaceConversion)];
 
     vertexBuffer.bind();
     program->glProgram->setAttributeBuffer(program->vertexCoordAttribPos, GL_FLOAT, 0, 3, 0);
@@ -293,7 +395,7 @@ void QOpenGLTextureBlitterPrivate::blit(GLuint texture,
     TextureBinder binder(currentTarget, texture);
     prepareProgram(vertexTransform);
 
-    Program *program = &programs[targetToProgramIndex(currentTarget)];
+    Program *program = &programs[targetToProgramIndex(currentTarget, colorSpaceConversion)];
     program->glProgram->setUniformValue(program->textureTransformUniformPos, textureTransform);
     program->textureMatrixUniformState = User;
 
@@ -307,7 +409,7 @@ void QOpenGLTextureBlitterPrivate::blit(GLuint texture,
     TextureBinder binder(currentTarget, texture);
     prepareProgram(vertexTransform);
 
-    Program *program = &programs[targetToProgramIndex(currentTarget)];
+    Program *program = &programs[targetToProgramIndex(currentTarget, colorSpaceConversion)];
     if (origin == QOpenGLTextureBlitter::OriginTopLeft) {
         if (program->textureMatrixUniformState != IdentityFlipped) {
             QMatrix3x3 flipped;
@@ -408,6 +510,18 @@ bool QOpenGLTextureBlitter::create()
     } else {
         if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_2D, vertex_shader, fragment_shader))
             return false;
+
+        // TODO: create non-default transformations on-demand
+        {
+            const QString shader = QString("#define SRGB_TO_SCRGB\n %1").arg(fragment_shader);
+            if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_2D_SRGB_TO_SCRGB, vertex_shader, shader.toLatin1().constData()))
+                return false;
+        }
+        {
+            const QString shader = QString("#define SRGB_TO_BT2020PQ\n %1").arg(fragment_shader);
+            if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_2D_SRGB_TO_BT2020PQ, vertex_shader, shader.toLatin1().constData()))
+                return false;
+        }
         if (supportsExternalOESTarget())
             if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_EXTERNAL_OES, vertex_shader, fragment_shader_external_oes))
                 return false;
@@ -455,6 +569,8 @@ void QOpenGLTextureBlitter::destroy()
         return;
     Q_D(QOpenGLTextureBlitter);
     d->programs[QOpenGLTextureBlitterPrivate::TEXTURE_2D].glProgram.reset();
+    d->programs[QOpenGLTextureBlitterPrivate::TEXTURE_2D_SRGB_TO_SCRGB].glProgram.reset();
+    d->programs[QOpenGLTextureBlitterPrivate::TEXTURE_2D_SRGB_TO_BT2020PQ].glProgram.reset();
     d->programs[QOpenGLTextureBlitterPrivate::TEXTURE_EXTERNAL_OES].glProgram.reset();
     d->vertexBuffer.destroy();
     d->textureBuffer.destroy();
@@ -484,15 +600,26 @@ bool QOpenGLTextureBlitter::supportsExternalOESTarget() const
 
     \sa release(), blit()
  */
-void QOpenGLTextureBlitter::bind(GLenum target)
+void QOpenGLTextureBlitter::bind(GLenum target,
+                                 QSurfaceFormat::ColorSpace srcColorSpace,
+                                 QSurfaceFormat::ColorSpace dstColorSpace)
 {
     Q_D(QOpenGLTextureBlitter);
 
     if (d->vao->isCreated())
         d->vao->bind();
 
+    const int index = d->calcColorSpaceConversionIndex(srcColorSpace, dstColorSpace);
+
+    if (index >= 0) {
+        d->colorSpaceConversion = index;
+    } else {
+        qWarning() << "QOpenGLTextureBlitter::bind(): color space conversion is not supported" << srcColorSpace << dstColorSpace;
+        d->colorSpaceConversion = 0; // noop conversion
+    }
+
     d->currentTarget = target;
-    QOpenGLTextureBlitterPrivate::Program *p = &d->programs[targetToProgramIndex(target)];
+    QOpenGLTextureBlitterPrivate::Program *p = &d->programs[targetToProgramIndex(target, d->colorSpaceConversion)];
     p->glProgram->bind();
 
     d->vertexBuffer.bind();
@@ -506,6 +633,21 @@ void QOpenGLTextureBlitter::bind(GLenum target)
     d->textureBuffer.release();
 }
 
+void QOpenGLTextureBlitter::rebind(GLenum target, QSurfaceFormat::ColorSpace srcColorSpace, QSurfaceFormat::ColorSpace dstColorSpace)
+{
+    Q_D(QOpenGLTextureBlitter);
+
+    if (d->vao->isCreated() &&
+        d->currentTarget == target &&
+        d->colorSpaceConversion == d->calcColorSpaceConversionIndex(srcColorSpace, dstColorSpace)) {
+
+        // the blitter is already configured in the correct state, so just skip it
+        return;
+    }
+
+    bind(target, srcColorSpace, dstColorSpace);
+}
+
 /*!
     Unbinds the graphics resources used by the blitter.
 
@@ -514,7 +656,7 @@ void QOpenGLTextureBlitter::bind(GLenum target)
 void QOpenGLTextureBlitter::release()
 {
     Q_D(QOpenGLTextureBlitter);
-    d->programs[targetToProgramIndex(d->currentTarget)].glProgram->release();
+    d->programs[targetToProgramIndex(d->currentTarget, d->colorSpaceConversion)].glProgram->release();
     if (d->vao->isCreated())
         d->vao->release();
 }

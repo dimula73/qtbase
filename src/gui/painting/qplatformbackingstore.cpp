@@ -300,6 +300,8 @@ static void blitTextureForWidget(const QPlatformTextureList *textures, int idx, 
     if (srgb && canUseSrgb)
         funcs->glEnable(GL_FRAMEBUFFER_SRGB);
 
+    // TODO: fetch real color space from the widget!!!
+    blitter->rebind(GL_TEXTURE_2D, QSurfaceFormat::DefaultColorSpace, window->format().colorSpace());
     blitter->blit(textures->textureId(idx), target, source);
 
     if (srgb && canUseSrgb)
@@ -432,6 +434,11 @@ void QPlatformBackingStore::composeAndFlush(QWindow *window, const QRegion &regi
         funcs->glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
 
     if (textureId) {
+        // GUI texture is always in sRGB color space
+        d_ptr->blitter->rebind(GL_TEXTURE_2D,
+                               QSurfaceFormat::sRGBColorSpace,
+                               window->format().colorSpace());
+
         if (d_ptr->needsSwizzle)
             d_ptr->blitter->setRedBlueSwizzle(true);
         // The backingstore is for the entire tlw.

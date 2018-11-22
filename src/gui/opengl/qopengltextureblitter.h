@@ -48,6 +48,9 @@
 #include <QtGui/QMatrix3x3>
 #include <QtGui/QMatrix4x4>
 
+// TODO: less includes!!!
+#include <QSurfaceFormat>
+
 QT_BEGIN_NAMESPACE
 
 class QOpenGLTextureBlitterPrivate;
@@ -69,7 +72,14 @@ public:
 
     bool supportsExternalOESTarget() const;
 
-    void bind(GLenum target = GL_TEXTURE_2D);
+    void bind(GLenum target = GL_TEXTURE_2D,
+              QSurfaceFormat::ColorSpace srcColorSpace = QSurfaceFormat::DefaultColorSpace,
+              QSurfaceFormat::ColorSpace dstColorSpace = QSurfaceFormat::DefaultColorSpace);
+
+    void rebind(GLenum target = GL_TEXTURE_2D,
+                QSurfaceFormat::ColorSpace srcColorSpace = QSurfaceFormat::DefaultColorSpace,
+                QSurfaceFormat::ColorSpace dstColorSpace = QSurfaceFormat::DefaultColorSpace);
+
     void release();
 
     void setRedBlueSwizzle(bool swizzle);
