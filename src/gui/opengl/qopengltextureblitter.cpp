@@ -135,7 +135,20 @@ static const char fragment_shader[] =
     "uniform sampler2D textureSampler;\n"
     "uniform bool swizzle;\n"
     "uniform highp float opacity;\n"
-    "#if defined SRGB_TO_SCRGB || defined SRGB_TO_BT2020PQ\n"
+    "#if defined SCRGB_TO_SRGB\n"
+    "highp vec4 linearToSRGB(highp vec4 value)\n"
+    "{\n"
+    "   bvec4 cutoff = lessThan(value, vec4(0.0031308));\n"
+    "   const highp vec2 a1 = vec2(0.055, 0.0);\n"
+    "   const highp vec2 c2 = vec2(1.055, 1.0);\n"
+    "   const highp vec2 m3 = vec2(2.4, 1.0);\n"
+    "   const highp vec2 c4 = vec2(12.92, 1.0);\n"
+    "   highp vec4 higher = c2.xxxy * pow(value, 1.0 / m3.xxxy) - a1.xxxy;\n"
+    "   highp vec4 lower = value * c4.xxxy;\n"
+    "   return mix(higher, lower, vec4(cutoff));\n"
+    "}\n"
+    "#endif\n"
+    "#if defined SRGB_TO_SCRGB || defined SRGB_TO_BT2020PQ || defined SCRGB_TO_BT2020PQ\n"
     "highp vec4 sRgbToLinear(highp vec4 sRGB)\n"
     "{\n"
     "   bvec4 cutoff = lessThan(sRGB, vec4(0.04045));\n"
@@ -148,7 +161,7 @@ static const char fragment_shader[] =
     "   return mix(higher, lower, vec4(cutoff));\n"
     "}\n"
     "#endif\n"
-    "#if defined SRGB_TO_BT2020PQ\n"
+    "#if defined SRGB_TO_BT2020PQ || defined SCRGB_TO_BT2020PQ\n"
     "highp vec4 applySmpte2084Curve(highp vec4 L)\n"
     "{"
     "   const highp vec2 m1 = vec2(2610.0 / 4096.0 / 4.0, 1.0);\n"
@@ -161,10 +174,10 @@ static const char fragment_shader[] =
     "   highp vec4 res = pow((a1.xxxy + c2.xxxy * Lp) / (a4.xxxy + c3.xxxy * Lp), m2.xxxy);\n"
     "   return res;"
     "}\n"
-    ""
-    "highp vec4 sRgbToBt2020pq(highp vec4 value)\n"
+    "#endif\n"
+    "#if defined SRGB_TO_BT2020PQ || defined SCRGB_TO_BT2020PQ\n"
+    "highp vec4 scRgbToBt2020pq(highp vec4 value)\n"
     "{\n"
-    "   value = sRgbToLinear(value);"
     "   const highp mat4 convMat = "
     "      mat4(0.627402, 0.069095, 0.016394, 0.0,"
     "           0.329292, 0.919544, 0.088028, 0.0,"
@@ -175,6 +188,13 @@ static const char fragment_shader[] =
     "   return applySmpte2084Curve(0.008 * value);"
     "}\n"
     "#endif\n"
+    "#if defined SRGB_TO_BT2020PQ\n"
+    "highp vec4 sRgbToBt2020pq(highp vec4 value)\n"
+    "{\n"
+    "   value = sRgbToLinear(value);"
+    "   return scRgbToBt2020pq(value);"
+    "}\n"
+    "#endif\n"
     "\n"
     "void main() {"
     "   highp vec4 tmpFragColor = texture2D(textureSampler,uv);"
@@ -183,6 +203,10 @@ static const char fragment_shader[] =
     "   tmpFragColor = sRgbToLinear(tmpFragColor);\n"
     "#elif defined SRGB_TO_BT2020PQ\n"
     "   tmpFragColor = sRgbToBt2020pq(tmpFragColor);\n"
+    "#elif defined SCRGB_TO_BT2020PQ\n"
+    "   tmpFragColor = scRgbToBt2020pq(tmpFragColor);\n"
+    "#elif defined SCRGB_TO_SRGB\n"
+    "   tmpFragColor = linearToSRGB(tmpFragColor);\n"
     "#endif\n"
     "   gl_FragColor = swizzle ? tmpFragColor.bgra : tmpFragColor;"
     "}";
@@ -262,7 +286,9 @@ public:
     enum ProgramIndex {
         TEXTURE_2D = 0,
         TEXTURE_2D_SRGB_TO_SCRGB,
+        TEXTURE_2D_SCRGB_TO_SRGB,
         TEXTURE_2D_SRGB_TO_BT2020PQ,
+        TEXTURE_2D_SCRGB_TO_BT2020PQ,
         TEXTURE_EXTERNAL_OES,
 
         PROGRAM_COUNT
@@ -277,7 +303,9 @@ public:
     {
         supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::DefaultColorSpace, QSurfaceFormat::DefaultColorSpace);
         supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::sRGBColorSpace, QSurfaceFormat::scRGBColorSpace);
+        supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::scRGBColorSpace, QSurfaceFormat::sRGBColorSpace);
         supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::sRGBColorSpace, QSurfaceFormat::bt2020PQColorSpace);
+        supportedColorSpaceConversions << ColorSpaceConversion(QSurfaceFormat::scRGBColorSpace, QSurfaceFormat::bt2020PQColorSpace);
     }
 
     bool buildProgram(ProgramIndex idx, const char *vs, const char *fs);
@@ -519,8 +547,18 @@ bool QOpenGLTextureBlitter::create()
                 return false;
         }
         {
+            const QString shader = QString("#define SCRGB_TO_SRGB\n %1").arg(fragment_shader);
+            if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_2D_SCRGB_TO_SRGB, vertex_shader, shader.toLatin1().constData()))
+                return false;
+        }
+        {
             const QString shader = QString("#define SRGB_TO_BT2020PQ\n %1").arg(fragment_shader);
             if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_2D_SRGB_TO_BT2020PQ, vertex_shader, shader.toLatin1().constData()))
+                return false;
+        }
+        {
+            const QString shader = QString("#define SCRGB_TO_BT2020PQ\n %1").arg(fragment_shader);
+            if (!d->buildProgram(QOpenGLTextureBlitterPrivate::TEXTURE_2D_SCRGB_TO_BT2020PQ, vertex_shader, shader.toLatin1().constData()))
                 return false;
         }
         if (supportsExternalOESTarget())

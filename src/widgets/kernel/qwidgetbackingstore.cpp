@@ -1000,7 +1000,7 @@ static void findTextureWidgetsRecursively(QWidget *tlw, QWidget *widget, QPlatfo
     if (wd->renderToTexture) {
         QPlatformTextureList::Flags flags = wd->textureListFlags();
         const QRect rect(widget->mapTo(tlw, QPoint()), widget->size());
-        widgetTextures->appendTexture(widget, wd->textureId(), rect, wd->clipRect(), flags);
+        widgetTextures->appendTexture(widget, wd->textureId(), rect, wd->clipRect(), flags, wd->colorSpace());
     }
 
     for (int i = 0; i < wd->children.size(); ++i) {

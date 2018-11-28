@@ -652,6 +652,7 @@ public:
             ? QPlatformTextureList::StacksOnTop
             : QPlatformTextureList::Flags(0);
     }
+    virtual QSurfaceFormat::ColorSpace colorSpace() const { return QSurfaceFormat::DefaultColorSpace; }
     virtual QImage grabFramebuffer() { return QImage(); }
     virtual void beginBackingStorePainting() { }
     virtual void endBackingStorePainting() { }
