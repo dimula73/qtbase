@@ -130,6 +130,7 @@ struct QBackingstoreTextureInfo
     QRect rect;
     QRect clipRect;
     QPlatformTextureList::Flags flags;
+    QSurfaceFormat::ColorSpace colorSpace;
 };
 
 Q_DECLARE_TYPEINFO(QBackingstoreTextureInfo, Q_MOVABLE_TYPE);
@@ -179,6 +180,12 @@ QPlatformTextureList::Flags QPlatformTextureList::flags(int index) const
     return d->textures.at(index).flags;
 }
 
+QSurfaceFormat::ColorSpace QPlatformTextureList::colorSpace(int index) const
+{
+    Q_D(const QPlatformTextureList);
+    return d->textures.at(index).colorSpace;
+}
+
 QRect QPlatformTextureList::geometry(int index) const
 {
     Q_D(const QPlatformTextureList);
@@ -207,7 +214,7 @@ bool QPlatformTextureList::isLocked() const
 }
 
 void QPlatformTextureList::appendTexture(void *source, GLuint textureId, const QRect &geometry,
-                                         const QRect &clipRect, Flags flags)
+                                         const QRect &clipRect, Flags flags, QSurfaceFormat::ColorSpace colorSpace)
 {
     Q_D(QPlatformTextureList);
     QBackingstoreTextureInfo bi;
@@ -216,6 +223,7 @@ void QPlatformTextureList::appendTexture(void *source, GLuint textureId, const Q
     bi.rect = geometry;
     bi.clipRect = clipRect;
     bi.flags = flags;
+    bi.colorSpace = colorSpace;
     d->textures.append(bi);
 }
 
@@ -298,8 +306,7 @@ static void blitTextureForWidget(const QPlatformTextureList *textures, int idx, 
     if (srgb && canUseSrgb)
         funcs->glEnable(GL_FRAMEBUFFER_SRGB);
 
-    // TODO: fetch real color space from the widget!!!
-    blitter->rebind(GL_TEXTURE_2D, QSurfaceFormat::DefaultColorSpace, window->format().colorSpace());
+    blitter->rebind(GL_TEXTURE_2D, textures->colorSpace(idx), window->format().colorSpace());
     blitter->blit(textures->textureId(idx), target, source);
 
     if (srgb && canUseSrgb)

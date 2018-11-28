@@ -568,7 +568,8 @@ public:
           updateBehavior(QOpenGLWidget::NoPartialUpdate),
           requestedSamples(0),
           inPaintGL(false),
-          textureFormat(0)
+          textureFormat(0),
+          textureColorSpace(QSurfaceFormat::DefaultColorSpace)
     {
         requestedFormat = QSurfaceFormat::defaultFormat();
     }
@@ -578,6 +579,7 @@ public:
 
     GLuint textureId() const override;
     QPlatformTextureList::Flags textureListFlags() override;
+    QSurfaceFormat::ColorSpace colorSpace() const override;
 
     void initialize();
     void invokeUserPaint();
@@ -609,6 +611,7 @@ public:
     int requestedSamples;
     bool inPaintGL;
     GLenum textureFormat;
+    QSurfaceFormat::ColorSpace textureColorSpace;
 };
 
 void QOpenGLWidgetPaintDevicePrivate::beginPaint()
@@ -693,6 +696,11 @@ QPlatformTextureList::Flags QOpenGLWidgetPrivate::textureListFlags()
         break;
     }
     return flags;
+}
+
+QSurfaceFormat::ColorSpace QOpenGLWidgetPrivate::colorSpace() const
+{
+    return textureColorSpace;
 }
 
 void QOpenGLWidgetPrivate::reset()
@@ -1101,6 +1109,41 @@ void QOpenGLWidget::setTextureFormat(GLenum texFormat)
     }
 
     d->textureFormat = texFormat;
+}
+
+/*!
+    \return the declared color space of the internal texture of the widget.
+
+    The texture's color space will be used when composing the widget
+    into the root window surface.
+
+    \note when the color space is set to QSurfaceFormat::DefaultColorSpace,
+    color conversion is effectively disabled.
+
+    \since 5.99
+ */
+QSurfaceFormat::ColorSpace QOpenGLWidget::textureColorSpace() const
+{
+    Q_D(const QOpenGLWidget);
+    return d->textureColorSpace;
+}
+
+/*!
+    Sets a custom color space for the internal texture of the widget
+
+    The color space of the texture will be compared against the color
+    space of the root surface and conversion will be performed if needed.
+
+    \note setting the color space to QSurfaceFormat::DefaultColorSpace will
+    effectively disable color conversion when composing this texture on
+    screen.
+
+    \since 5.99
+ */
+void QOpenGLWidget::setTextureColorSpace(QSurfaceFormat::ColorSpace colorSpace)
+{
+    Q_D(QOpenGLWidget);
+    d->textureColorSpace = colorSpace;
 }
 
 /*!

@@ -75,6 +75,9 @@ public:
     GLenum textureFormat() const;
     void setTextureFormat(GLenum texFormat);
 
+    QSurfaceFormat::ColorSpace textureColorSpace() const;
+    void setTextureColorSpace(QSurfaceFormat::ColorSpace colorSpace);
+
     bool isValid() const;
 
     void makeCurrent();

@@ -93,11 +93,13 @@ public:
     QRect clipRect(int index) const;
     void *source(int index);
     Flags flags(int index) const;
+    QSurfaceFormat::ColorSpace colorSpace(int index) const;
     void lock(bool on);
     bool isLocked() const;
 
     void appendTexture(void *source, GLuint textureId, const QRect &geometry,
-                       const QRect &clipRect = QRect(), Flags flags = 0);
+                       const QRect &clipRect = QRect(), Flags flags = 0,
+                       QSurfaceFormat::ColorSpace colorSpace = QSurfaceFormat::DefaultColorSpace);
     void clear();
 
  Q_SIGNALS:
