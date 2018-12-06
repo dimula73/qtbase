@@ -1167,6 +1167,8 @@ void QDockWidgetPrivate::setWindowState(bool floating, bool unplug, const QRect 
             QMainWindowLayout *mwlayout = qt_mainwindow_layout_from_dock(q);
             if (mwlayout)
                 emit q->dockLocationChanged(mwlayout->dockWidgetArea(q));
+        } else {
+            emit q->dockLocationChanged(Qt::NoDockWidgetArea);
         }
     }
 
