@@ -59,12 +59,22 @@
 #   endif
 
 #   if defined(ANGLE_ENABLE_D3D11)
-#include <d3d10_1.h>
-#include <d3d11.h>
-#include <d3d11_3.h>
-#include <d3dcompiler.h>
-#include <dxgi.h>
-#include <dxgi1_2.h>
+#       include <d3d10_1.h>
+#       include <d3d11.h>
+#       include <dxgi.h>
+#      if defined(__MINGW32__) && !defined(__d3d11sdklayers_h__)
+#          define ANGLE_MINGW32_COMPAT
+#      endif
+//#      if defined(_MSC_VER) && _MSC_VER >= 1800
+#          define ANGLE_ENABLE_D3D11_1
+//#      endif
+#      if defined(ANGLE_ENABLE_D3D11_1)
+#       include <d3d11_1.h>
+#       include <d3d11_3.h>
+#       include <dxgi1_2.h>
+#       include <dxgi1_4.h> // TODO: This is actually D3D12!!!
+#      endif
+#       include <d3dcompiler.h>
 #   endif
 
 #if defined(ANGLE_ENABLE_D3D9) || defined(ANGLE_ENABLE_D3D11)
