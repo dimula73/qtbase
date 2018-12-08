@@ -351,12 +351,7 @@ bool QWindowsContext::initTouch(unsigned integrationOptions)
 bool QWindowsContext::initTablet(unsigned integrationOptions)
 {
     Q_UNUSED(integrationOptions);
-#if QT_CONFIG(tabletevent)
-    d->m_tabletSupport.reset(QWindowsTabletSupport::create());
-    return true;
-#else
     return false;
-#endif
 }
 
 bool QWindowsContext::initPointer(unsigned integrationOptions)
