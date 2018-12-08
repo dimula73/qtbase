@@ -90,6 +90,7 @@ class SurfaceD3D : public SurfaceImpl
 
     bool mFixedSize;
     GLint mOrientation;
+    EGLint mColorSpace;
 
     GLenum mRenderTargetFormat;
     GLenum mDepthStencilFormat;

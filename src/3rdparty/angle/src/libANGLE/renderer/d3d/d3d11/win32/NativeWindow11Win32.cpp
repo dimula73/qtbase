@@ -158,9 +158,9 @@ HRESULT NativeWindow11Win32::createSwapChain(ID3D11Device *device,
         swapChainDesc.SampleDesc.Quality    = 0;
         swapChainDesc.BufferUsage =
             DXGI_USAGE_RENDER_TARGET_OUTPUT | DXGI_USAGE_SHADER_INPUT | DXGI_USAGE_BACK_BUFFER;
-        swapChainDesc.BufferCount   = 1;
+        swapChainDesc.BufferCount   = 2;
         swapChainDesc.Scaling       = DXGI_SCALING_STRETCH;
-        swapChainDesc.SwapEffect    = DXGI_SWAP_EFFECT_SEQUENTIAL;
+        swapChainDesc.SwapEffect    = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
         swapChainDesc.AlphaMode     = DXGI_ALPHA_MODE_UNSPECIFIED;
         swapChainDesc.Flags         = 0;
         IDXGISwapChain1 *swapChain1 = nullptr;
@@ -176,7 +176,7 @@ HRESULT NativeWindow11Win32::createSwapChain(ID3D11Device *device,
     }
 
     DXGI_SWAP_CHAIN_DESC swapChainDesc               = {};
-    swapChainDesc.BufferCount                        = 1;
+    swapChainDesc.BufferCount                        = 2;
     swapChainDesc.BufferDesc.Format                  = format;
     swapChainDesc.BufferDesc.Width                   = width;
     swapChainDesc.BufferDesc.Height                  = height;
@@ -191,7 +191,17 @@ HRESULT NativeWindow11Win32::createSwapChain(ID3D11Device *device,
     swapChainDesc.SampleDesc.Count   = samples;
     swapChainDesc.SampleDesc.Quality = 0;
     swapChainDesc.Windowed           = TRUE;
-    swapChainDesc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
+
+    /**
+     * NOTE1: in flip-discard mode the swap chain doesn't support partial
+     *       presentatiopn with Present1() call. Though it is not a big
+     *       problem, because in case DXGI 1.2 is supported this code is
+     *       unreachable.
+     *
+     * NOTE2: in non-flip mode HDR rendering is not supported, so use it
+     *        bt default
+     */
+    swapChainDesc.SwapEffect         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
     HRESULT result = factory->CreateSwapChain(device, &swapChainDesc, swapChain);
     if (SUCCEEDED(result))

@@ -545,10 +545,13 @@ void QOpenGLFramebufferObjectPrivate::initTexture(int idx)
     ColorAttachment &color(colorAttachments[idx]);
 
     GLuint pixelType = GL_UNSIGNED_BYTE;
-    if (color.internalFormat == GL_RGB10_A2 || color.internalFormat == GL_RGB10)
+    if (color.internalFormat == GL_RGB10_A2 || color.internalFormat == GL_RGB10) {
         pixelType = GL_UNSIGNED_INT_2_10_10_10_REV;
-    else if (color.internalFormat == GL_RGB16  || color.internalFormat == GL_RGBA16)
+    } else if (color.internalFormat == GL_RGB16  || color.internalFormat == GL_RGBA16) {
         pixelType = GL_UNSIGNED_SHORT;
+    } else if (color.internalFormat == GL_RGBA16F) {
+        pixelType = GL_HALF_FLOAT;
+    }
 
     funcs.glTexImage2D(target, 0, color.internalFormat, color.size.width(), color.size.height(), 0,
                        GL_RGBA, pixelType, NULL);

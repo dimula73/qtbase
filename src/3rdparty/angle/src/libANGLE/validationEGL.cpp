@@ -885,6 +885,32 @@ Error ValidateCreateWindowSurface(Display *display, Config *config, EGLNativeWin
                                               "either EGL_TRUE or EGL_FALSE.";
               }
               break;
+          case EGL_GL_COLORSPACE:
+
+              if (!displayExtensions.colorspaceSRGB)
+              {
+                  return Error(EGL_BAD_ATTRIBUTE, "EGL_KHR_gl_colorspace is not supported on this platform.");
+              }
+
+              if (value == EGL_GL_COLORSPACE_SCRGB_LINEAR_EXT)
+              {
+                  if (!displayExtensions.colorspaceSCRGBLinear)
+                  {
+                      return Error(EGL_BAD_ATTRIBUTE, "EGL_EXT_gl_colorspace_scrgb_linear is not supported on this platform.");
+                  }
+              }
+              else if (value == EGL_GL_COLORSPACE_BT2020_PQ_EXT)
+              {
+                  if (!displayExtensions.colorspaceBt2020PQ)
+                  {
+                      return Error(EGL_BAD_ATTRIBUTE, "EGL_EXT_gl_colorspace_bt2020_pq is not supported on this platform.");
+                  }
+              }
+              else if (value != EGL_GL_COLORSPACE_SRGB_KHR && value != EGL_GL_COLORSPACE_LINEAR_KHR)
+              {
+                  return Error(EGL_BAD_ATTRIBUTE);
+              }
+              break;
 
           default:
               return EglBadAttribute();

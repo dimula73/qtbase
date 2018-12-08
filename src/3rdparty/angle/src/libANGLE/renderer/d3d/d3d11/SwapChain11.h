@@ -28,7 +28,8 @@ class SwapChain11 final : public SwapChainD3D
                 GLenum backBufferFormat,
                 GLenum depthBufferFormat,
                 EGLint orientation,
-                EGLint samples);
+                EGLint samples,
+                EGLint colorSpace);
     ~SwapChain11() override;
 
     EGLint resize(const gl::Context *context,
@@ -93,6 +94,7 @@ class SwapChain11 final : public SwapChainD3D
     EGLint mWidth;
     EGLint mHeight;
     const EGLint mOrientation;
+    EGLint mColorSpace;
     bool mAppCreatedShareHandle;
     unsigned int mSwapInterval;
     bool mPassThroughResourcesInit;

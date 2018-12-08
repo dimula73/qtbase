@@ -465,6 +465,7 @@ Renderer11::Renderer11(egl::Display *display)
     mRenderer11DeviceCaps.supportsConstantBufferOffsets = false;
     mRenderer11DeviceCaps.supportsVpRtIndexWriteFromVertexShader = false;
     mRenderer11DeviceCaps.supportsDXGI1_2               = false;
+    mRenderer11DeviceCaps.supportsDXGI1_4               = false;
     mRenderer11DeviceCaps.B5G6R5support                 = 0;
     mRenderer11DeviceCaps.B4G4R4A4support               = 0;
     mRenderer11DeviceCaps.B5G5R5A1support               = 0;
@@ -918,6 +919,7 @@ egl::Error Renderer11::initializeDevice()
 
     // Gather stats on DXGI and D3D feature level
     ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.SupportsDXGI1_2", mRenderer11DeviceCaps.supportsDXGI1_2);
+    ANGLE_HISTOGRAM_BOOLEAN("GPU.ANGLE.SupportsDXGI1_4", mRenderer11DeviceCaps.supportsDXGI1_4);
 
     ANGLEFeatureLevel angleFeatureLevel = GetANGLEFeatureLevel(mRenderer11DeviceCaps.featureLevel);
 
@@ -999,9 +1001,15 @@ void Renderer11::populateRenderer11DeviceCaps()
                              &mRenderer11DeviceCaps.B5G5R5A1support,
                              &mRenderer11DeviceCaps.B5G5R5A1maxSamples);
 
+//#if defined(ANGLE_ENABLE_D3D11_1)
     IDXGIAdapter2 *dxgiAdapter2 = d3d11::DynamicCastComObject<IDXGIAdapter2>(mDxgiAdapter);
     mRenderer11DeviceCaps.supportsDXGI1_2 = (dxgiAdapter2 != nullptr);
     SafeRelease(dxgiAdapter2);
+
+    IDXGIAdapter3 *dxgiAdapter3 = d3d11::DynamicCastComObject<IDXGIAdapter3>(mDxgiAdapter);
+    mRenderer11DeviceCaps.supportsDXGI1_4 = (dxgiAdapter3 != nullptr);
+    SafeRelease(dxgiAdapter3);
+//#endif
 }
 
 gl::SupportedSampleSet Renderer11::generateSampleSetForEGLConfig(
@@ -1241,6 +1249,11 @@ void Renderer11::generateDisplayExtensions(egl::DisplayExtensions *outExtensions
 
     // All D3D feature levels support robust resource init
     outExtensions->robustResourceInitialization = true;
+
+    // color space selection is always supported in DirectX11
+    outExtensions->colorspaceSRGB = true;
+    outExtensions->colorspaceSCRGBLinear = true;
+    outExtensions->colorspaceBt2020PQ = true;
 }
 
 gl::Error Renderer11::flush()
@@ -1436,10 +1449,11 @@ SwapChainD3D *Renderer11::createSwapChain(NativeWindowD3D *nativeWindow,
                                           GLenum backBufferFormat,
                                           GLenum depthBufferFormat,
                                           EGLint orientation,
-                                          EGLint samples)
+                                          EGLint samples,
+                                          EGLint colorSpace)
 {
     return new SwapChain11(this, GetAs<NativeWindow11>(nativeWindow), shareHandle, d3dTexture,
-                           backBufferFormat, depthBufferFormat, orientation, samples);
+                           backBufferFormat, depthBufferFormat, orientation, samples, colorSpace);
 }
 
 void *Renderer11::getD3DDevice()

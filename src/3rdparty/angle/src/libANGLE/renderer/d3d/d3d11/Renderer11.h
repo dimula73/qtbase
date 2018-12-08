@@ -49,6 +49,7 @@ struct Renderer11DeviceCaps
 
     D3D_FEATURE_LEVEL featureLevel;
     bool supportsDXGI1_2;                // Support for DXGI 1.2
+    bool supportsDXGI1_4;               // Support for DXGI 1.4
     bool supportsClearView;              // Support for ID3D11DeviceContext1::ClearView
     bool supportsConstantBufferOffsets;  // Support for Constant buffer offset
     bool supportsVpRtIndexWriteFromVertexShader;  // VP/RT can be selected in the Vertex Shader
@@ -138,7 +139,8 @@ class Renderer11 : public RendererD3D
                                   GLenum backBufferFormat,
                                   GLenum depthBufferFormat,
                                   EGLint orientation,
-                                  EGLint samples) override;
+                                  EGLint samples,
+                                  EGLint colorSpace) override;
     egl::Error getD3DTextureInfo(const egl::Config *configuration,
                                  IUnknown *d3dTexture,
                                  EGLint *width,

@@ -87,7 +87,9 @@ public:
 
     enum ColorSpace {
         DefaultColorSpace,
-        sRGBColorSpace
+        sRGBColorSpace,
+        scRGBColorSpace,
+        bt2020PQColorSpace
     };
     Q_ENUM(ColorSpace)
 

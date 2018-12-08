@@ -22,6 +22,27 @@
 namespace rx
 {
 
+GLenum renderTargetFormatFromColorSpace(egl::Display *display, GLenum baseFormat, EGLint colorSpace)
+{
+    GLenum result = baseFormat;
+
+    /**
+     * If sRGB extension is supported, we should change the surface format
+     * to a specific one that does support automated gamma conversion.
+     *
+     * TODO: openGL doesn't support BGRA-sRGB texture format, so creation of
+     *       textures in this format technically is not supported!
+     */
+    if (display->getExtensions().colorspaceSRGB &&
+        baseFormat == GL_RGBA8_OES &&
+        colorSpace == EGL_GL_COLORSPACE_SRGB_KHR)
+    {
+        result = GL_SRGB8_ALPHA8;
+    }
+
+    return result;
+}
+
 SurfaceD3D::SurfaceD3D(const egl::SurfaceState &state,
                        RendererD3D *renderer,
                        egl::Display *display,
@@ -34,7 +55,8 @@ SurfaceD3D::SurfaceD3D(const egl::SurfaceState &state,
       mDisplay(display),
       mFixedSize(window == nullptr || attribs.get(EGL_FIXED_SIZE_ANGLE, EGL_FALSE) == EGL_TRUE),
       mOrientation(static_cast<EGLint>(attribs.get(EGL_SURFACE_ORIENTATION_ANGLE, 0))),
-      mRenderTargetFormat(state.config->renderTargetFormat),
+      mColorSpace(static_cast<EGLint>(attribs.get(EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_LINEAR_KHR))),
+      mRenderTargetFormat(renderTargetFormatFromColorSpace(display, state.config->renderTargetFormat, mColorSpace)),
       mDepthStencilFormat(state.config->depthStencilFormat),
       mSwapChain(nullptr),
       mSwapIntervalDirty(true),
@@ -148,7 +170,7 @@ egl::Error SurfaceD3D::resetSwapChain(const egl::Display *display)
 
     mSwapChain =
         mRenderer->createSwapChain(mNativeWindow, mShareHandle, mD3DTexture, mRenderTargetFormat,
-                                   mDepthStencilFormat, mOrientation, mState.config->samples);
+                                   mDepthStencilFormat, mOrientation, mState.config->samples, mColorSpace);
     if (!mSwapChain)
     {
         return egl::EglBadAlloc();
