@@ -892,6 +892,10 @@ inline int BitCount(uint32_t bits)
     return (((bits + (bits >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 #else // _M_ARM
+#if defined __GNUC__
+#define __popcnt __builtin_popcount
+#define __popcnt64 __builtin_popcountl
+#endif
 inline int BitCount(uint32_t bits)
 {
     return static_cast<int>(__popcnt(bits));
@@ -901,8 +905,12 @@ inline int BitCount(uint64_t bits)
 {
     return static_cast<int>(__popcnt64(bits));
 }
-#endif // !_M_ARM
 #endif  // defined(ANGLE_IS_64_BIT_CPU)
+#endif // !_M_ARM
+#if defined __GNUC__
+#undef __popcnt
+#undef __popcnt64
+#endif
 #endif  // defined(ANGLE_PLATFORM_WINDOWS)
 
 #if defined(ANGLE_PLATFORM_POSIX)
