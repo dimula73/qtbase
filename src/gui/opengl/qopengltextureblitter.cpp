@@ -199,6 +199,7 @@ static const char fragment_shader[] =
     "void main() {"
     "   highp vec4 tmpFragColor = texture2D(textureSampler,uv);"
     "   tmpFragColor.a *= opacity;\n"
+    "   tmpFragColor = swizzle ? tmpFragColor.bgra : tmpFragColor;\n"
     "#if defined SRGB_TO_SCRGB\n"
     "   tmpFragColor = sRgbToLinear(tmpFragColor);\n"
     "#elif defined SRGB_TO_BT2020PQ\n"
@@ -208,7 +209,7 @@ static const char fragment_shader[] =
     "#elif defined SCRGB_TO_SRGB\n"
     "   tmpFragColor = linearToSRGB(tmpFragColor);\n"
     "#endif\n"
-    "   gl_FragColor = swizzle ? tmpFragColor.bgra : tmpFragColor;"
+    "   gl_FragColor = tmpFragColor;"
     "}";
 
 static const char fragment_shader_external_oes[] =
