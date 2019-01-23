@@ -18,7 +18,10 @@
 #include "libANGLE/renderer/d3d/d3d11/texture_format_table.h"
 #include "third_party/trace_event/trace_event.h"
 
-#include <Dxgi1_5.h>
+#if 0
+// used only for HDR metadata configuration options
+#include <dxgi1_5.h>
+#endif
 
 // Precompiled shaders
 #include "libANGLE/renderer/d3d/d3d11/shaders/compiled/passthrough2d11vs.h"
@@ -626,7 +629,6 @@ EGLint SwapChain11::reset(const gl::Context *context,
 
         if (mRenderer->getRenderer11DeviceCaps().supportsDXGI1_4)
         {
-#if defined(ANGLE_ENABLE_D3D11_1)
             IDXGISwapChain3 *swapChain3 = d3d11::DynamicCastComObject<IDXGISwapChain3>(mSwapChain);
 
             printf("*** EGL colorSpace: 0x%X\n", mColorSpace);
@@ -686,7 +688,6 @@ EGLint SwapChain11::reset(const gl::Context *context,
             result = swapChain4->SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(md), &md);
             printf("*** Result hdr 0x%X\n", result);
             SafeRelease(swapChain4);
-#endif
 #endif
         }
 

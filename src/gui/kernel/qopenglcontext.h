@@ -210,6 +210,7 @@ public:
     static OpenGLModuleType openGLModuleType();
 
     bool isOpenGLES() const;
+    bool isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace) const;
 
     static bool supportsThreadedOpenGL();
     static QOpenGLContext *globalShareContext();

@@ -151,8 +151,9 @@ bool QWindowsLibEGL::init()
     eglGetCurrentDisplay = RESOLVE((EGLDisplay (EGLAPIENTRY *)(void)), eglGetCurrentDisplay);
     eglSwapBuffers = RESOLVE((EGLBoolean (EGLAPIENTRY *)(EGLDisplay , EGLSurface)), eglSwapBuffers);
     eglGetProcAddress = RESOLVE((QFunctionPointer (EGLAPIENTRY * )(const char *)), eglGetProcAddress);
+    eglQueryString = RESOLVE((const char* (EGLAPIENTRY *)(EGLDisplay, EGLint)), eglQueryString);
 
-    if (!eglGetError || !eglGetDisplay || !eglInitialize || !eglGetProcAddress)
+    if (!eglGetError || !eglGetDisplay || !eglInitialize || !eglGetProcAddress || !eglQueryString)
         return false;
 
     eglGetPlatformDisplayEXT = 0;
@@ -197,8 +198,15 @@ bool QWindowsLibGLESv2::init()
 }
 
 QWindowsEGLStaticContext::QWindowsEGLStaticContext(EGLDisplay display)
-    : m_display(display)
+    : m_display(display),
+      m_hasSRGBColorSpaceSupport(false),
+      m_hasSCRGBColorSpaceSupport(false),
+      m_hasBt2020PQColorSpaceSupport(false)
 {
+    const char *eglExtensions = libEGL.eglQueryString(display, EGL_EXTENSIONS);
+    m_hasSRGBColorSpaceSupport = strstr(eglExtensions, "EGL_KHR_gl_colorspace") != nullptr;
+    m_hasSCRGBColorSpaceSupport = strstr(eglExtensions, "EGL_EXT_gl_colorspace_scrgb_linear") != nullptr;
+    m_hasBt2020PQColorSpaceSupport = strstr(eglExtensions, "EGL_EXT_gl_colorspace_bt2020_pq") != nullptr;
 }
 
 bool QWindowsEGLStaticContext::initializeAngle(QWindowsOpenGLTester::Renderers preferredType, HDC dc,
@@ -303,30 +311,42 @@ void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *na
     *err = 0;
 
     EGLint eglColorSpace = EGL_GL_COLORSPACE_LINEAR_KHR;
+    bool colorSpaceSupported = false;
 
     switch (colorSpace) {
     case QSurfaceFormat::DefaultColorSpace:
+        colorSpaceSupported = m_hasSRGBColorSpaceSupport;
         break;
     case QSurfaceFormat::sRGBColorSpace:
         eglColorSpace = EGL_GL_COLORSPACE_SRGB_KHR;
+        colorSpaceSupported = m_hasSRGBColorSpaceSupport;
         break;
     case QSurfaceFormat::scRGBColorSpace:
         eglColorSpace = EGL_GL_COLORSPACE_SCRGB_LINEAR_EXT;
+        colorSpaceSupported = m_hasSCRGBColorSpaceSupport;
         break;
     case QSurfaceFormat::bt2020PQColorSpace:
         eglColorSpace = EGL_GL_COLORSPACE_BT2020_PQ_EXT;
+        colorSpaceSupported = m_hasBt2020PQColorSpaceSupport;
         break;
     }
 
-    // TODO: check if the attribute is actually suportef by the implementation
-    const EGLint attributes[] = {
-        EGL_GL_COLORSPACE, eglColorSpace,
-        EGL_NONE
-    };
+    QVector<EGLint> attributes;
+
+    if (colorSpaceSupported) {
+        attributes << EGL_GL_COLORSPACE << eglColorSpace;
+    }
+
+    attributes << EGL_NONE;
+
+    if (!colorSpaceSupported && colorSpace != QSurfaceFormat::DefaultColorSpace) {
+        qWarning().nospace() << __FUNCTION__ << ": Requested color space is not supported by EGL implementation: " << colorSpace << " (egl: 0x" << hex << eglColorSpace << ")";
+    }
+
 
     EGLSurface surface = libEGL.eglCreateWindowSurface(m_display, nativeConfig,
                                                        static_cast<EGLNativeWindowType>(nativeWindow),
-                                                       attributes);
+                                                       attributes.constData());
     if (surface == EGL_NO_SURFACE) {
         *err = libEGL.eglGetError();
         qWarning("%s: Could not create the EGL window surface: 0x%x", __FUNCTION__, *err);
@@ -762,6 +782,28 @@ QFunctionPointer QWindowsEGLContext::getProcAddress(const char *procName)
         qCDebug(lcQpaGl) << __FUNCTION__ <<  procName << QWindowsEGLStaticContext::libEGL.eglGetCurrentContext() << "returns" << procAddress;
 
     return procAddress;
+}
+
+bool QWindowsEGLContext::isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace)
+{
+    bool supported = false;
+
+    switch (colorSpace) {
+    case QSurfaceFormat::DefaultColorSpace:
+        supported = true;
+        break;
+    case QSurfaceFormat::sRGBColorSpace:
+        supported = m_staticContext->hasSRGBColorSpaceSupport();
+        break;
+    case QSurfaceFormat::scRGBColorSpace:
+        supported = m_staticContext->hasSCRGBColorSpaceSupport();
+        break;
+    case QSurfaceFormat::bt2020PQColorSpace:
+        supported = m_staticContext->hasBt2020PQColorSpaceSupport();
+        break;
+    }
+
+    return supported;
 }
 
 static QVector<EGLint> createConfigAttributesFromFormat(const QSurfaceFormat &format)

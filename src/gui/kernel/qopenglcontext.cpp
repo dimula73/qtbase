@@ -1312,6 +1312,22 @@ bool QOpenGLContext::isOpenGLES() const
 }
 
 /*!
+  Returns \c true if the platform supports creation of surfaces with a color space
+  tag. Such surfaces will be converted by the display color space automatically by
+  the platform.
+
+  The value is controlled by the platform plugin in use and may also depend on the
+  graphics drivers.
+
+  \since 5.XX
+ */
+bool QOpenGLContext::isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace) const
+{
+    Q_D(const QOpenGLContext);
+    return d->platformGLContext->isSurfaceColorSpaceSupported(colorSpace);
+}
+
+/*!
   Returns \c true if the platform supports OpenGL rendering outside the main (gui)
   thread.
 

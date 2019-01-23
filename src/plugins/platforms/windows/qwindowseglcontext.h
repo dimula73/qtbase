@@ -80,6 +80,7 @@ struct QWindowsLibEGL
     QFunctionPointer (EGLAPIENTRY *eglGetProcAddress)(const char *procname);
 
     EGLDisplay (EGLAPIENTRY * eglGetPlatformDisplayEXT)(EGLenum platform, void *native_display, const EGLint *attrib_list);
+    const char* (EGLAPIENTRY * eglQueryString)(EGLDisplay dpy, EGLint name);
 
 private:
 #if !defined(QT_STATIC) || defined(QT_OPENGL_DYNAMIC)
@@ -129,12 +130,19 @@ public:
     static QWindowsLibEGL libEGL;
     static QWindowsLibGLESv2 libGLESv2;
 
+    bool hasSRGBColorSpaceSupport() { return m_hasSRGBColorSpaceSupport; }
+    bool hasSCRGBColorSpaceSupport() { return m_hasSCRGBColorSpaceSupport; }
+    bool hasBt2020PQColorSpaceSupport() { return m_hasBt2020PQColorSpaceSupport; }
+
 private:
     explicit QWindowsEGLStaticContext(EGLDisplay display);
     static bool initializeAngle(QWindowsOpenGLTester::Renderers preferredType, HDC dc,
                                 EGLDisplay *display, EGLint *major, EGLint *minor);
 
     const EGLDisplay m_display;
+    bool m_hasSRGBColorSpaceSupport;
+    bool m_hasSCRGBColorSpaceSupport;
+    bool m_hasBt2020PQColorSpaceSupport;
 };
 
 class QWindowsEGLContext : public QWindowsOpenGLContext
@@ -157,6 +165,8 @@ public:
     void *nativeContext() const override { return m_eglContext; }
     void *nativeDisplay() const override { return m_eglDisplay; }
     void *nativeConfig() const override { return m_eglConfig; }
+
+    bool isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace) override;
 
 private:
     EGLConfig chooseConfig(const QSurfaceFormat &format);

@@ -1001,7 +1001,6 @@ void Renderer11::populateRenderer11DeviceCaps()
                              &mRenderer11DeviceCaps.B5G5R5A1support,
                              &mRenderer11DeviceCaps.B5G5R5A1maxSamples);
 
-//#if defined(ANGLE_ENABLE_D3D11_1)
     IDXGIAdapter2 *dxgiAdapter2 = d3d11::DynamicCastComObject<IDXGIAdapter2>(mDxgiAdapter);
     mRenderer11DeviceCaps.supportsDXGI1_2 = (dxgiAdapter2 != nullptr);
     SafeRelease(dxgiAdapter2);
@@ -1009,7 +1008,6 @@ void Renderer11::populateRenderer11DeviceCaps()
     IDXGIAdapter3 *dxgiAdapter3 = d3d11::DynamicCastComObject<IDXGIAdapter3>(mDxgiAdapter);
     mRenderer11DeviceCaps.supportsDXGI1_4 = (dxgiAdapter3 != nullptr);
     SafeRelease(dxgiAdapter3);
-//#endif
 }
 
 gl::SupportedSampleSet Renderer11::generateSampleSetForEGLConfig(
@@ -1250,10 +1248,10 @@ void Renderer11::generateDisplayExtensions(egl::DisplayExtensions *outExtensions
     // All D3D feature levels support robust resource init
     outExtensions->robustResourceInitialization = true;
 
-    // color space selection is always supported in DirectX11
-    outExtensions->colorspaceSRGB = true;
-    outExtensions->colorspaceSCRGBLinear = true;
-    outExtensions->colorspaceBt2020PQ = true;
+    // color space selection supported in DXGI 1.4 only
+    outExtensions->colorspaceSRGB = mRenderer11DeviceCaps.supportsDXGI1_4;
+    outExtensions->colorspaceSCRGBLinear = mRenderer11DeviceCaps.supportsDXGI1_4;
+    outExtensions->colorspaceBt2020PQ = mRenderer11DeviceCaps.supportsDXGI1_4;
 }
 
 gl::Error Renderer11::flush()
