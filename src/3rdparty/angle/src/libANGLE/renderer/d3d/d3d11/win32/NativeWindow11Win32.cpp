@@ -146,6 +146,9 @@ HRESULT NativeWindow11Win32::createSwapChain(ID3D11Device *device,
 
     // Use IDXGIFactory2::CreateSwapChainForHwnd if DXGI 1.2 is available to create a
     // DXGI_SWAP_EFFECT_SEQUENTIAL swap chain.
+    //
+    // NOTE: in non-flip mode HDR rendering is not supported, so use it
+    //       by default
     IDXGIFactory2 *factory2 = d3d11::DynamicCastComObject<IDXGIFactory2>(factory);
     if (factory2 != nullptr)
     {
@@ -193,21 +196,20 @@ HRESULT NativeWindow11Win32::createSwapChain(ID3D11Device *device,
     swapChainDesc.Windowed           = TRUE;
 
     /**
-     * NOTE1: in flip-discard mode the swap chain doesn't support partial
+     * NOTE: in discard mode the swap chain doesn't support partial
      *       presentatiopn with Present1() call. Though it is not a big
      *       problem, because in case DXGI 1.2 is supported this code is
      *       unreachable.
-     *
-     * NOTE2: in non-flip mode HDR rendering is not supported, so use it
-     *        bt default
      */
-    swapChainDesc.SwapEffect         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.SwapEffect         = DXGI_SWAP_EFFECT_DISCARD;
 
     HRESULT result = factory->CreateSwapChain(device, &swapChainDesc, swapChain);
+
     if (SUCCEEDED(result))
     {
         factory->MakeWindowAssociation(getNativeWindow(), DXGI_MWA_NO_ALT_ENTER);
     }
+
     return result;
 }
 
