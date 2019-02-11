@@ -784,28 +784,6 @@ QFunctionPointer QWindowsEGLContext::getProcAddress(const char *procName)
     return procAddress;
 }
 
-bool QWindowsEGLContext::isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace)
-{
-    bool supported = false;
-
-    switch (colorSpace) {
-    case QSurfaceFormat::DefaultColorSpace:
-        supported = true;
-        break;
-    case QSurfaceFormat::sRGBColorSpace:
-        supported = m_staticContext->hasSRGBColorSpaceSupport();
-        break;
-    case QSurfaceFormat::scRGBColorSpace:
-        supported = m_staticContext->hasSCRGBColorSpaceSupport();
-        break;
-    case QSurfaceFormat::bt2020PQColorSpace:
-        supported = m_staticContext->hasBt2020PQColorSpaceSupport();
-        break;
-    }
-
-    return supported;
-}
-
 static QVector<EGLint> createConfigAttributesFromFormat(const QSurfaceFormat &format)
 {
     int redSize     = format.redBufferSize();

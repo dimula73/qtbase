@@ -130,10 +130,6 @@ public:
     static QWindowsLibEGL libEGL;
     static QWindowsLibGLESv2 libGLESv2;
 
-    bool hasSRGBColorSpaceSupport() { return m_hasSRGBColorSpaceSupport; }
-    bool hasSCRGBColorSpaceSupport() { return m_hasSCRGBColorSpaceSupport; }
-    bool hasBt2020PQColorSpaceSupport() { return m_hasBt2020PQColorSpaceSupport; }
-
 private:
     explicit QWindowsEGLStaticContext(EGLDisplay display);
     static bool initializeAngle(QWindowsOpenGLTester::Renderers preferredType, HDC dc,
@@ -165,8 +161,6 @@ public:
     void *nativeContext() const override { return m_eglContext; }
     void *nativeDisplay() const override { return m_eglDisplay; }
     void *nativeConfig() const override { return m_eglConfig; }
-
-    bool isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace) override;
 
 private:
     EGLConfig chooseConfig(const QSurfaceFormat &format);

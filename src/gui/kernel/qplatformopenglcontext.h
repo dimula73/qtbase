@@ -90,8 +90,6 @@ public:
 
     static bool parseOpenGLVersion(const QByteArray &versionString, int &major, int &minor);
 
-    virtual bool isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace);
-
 private:
     friend class QOpenGLContext;
 

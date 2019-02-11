@@ -165,16 +165,4 @@ bool QPlatformOpenGLContext::parseOpenGLVersion(const QByteArray &versionString,
     return (majorOk && minorOk);
 }
 
-/*!
-    Reimplement in subclass if your platform supports setting a color space for the
-    surface.
-
-    The default implementation returns false.
-*/
-bool QPlatformOpenGLContext::isSurfaceColorSpaceSupported(QSurfaceFormat::ColorSpace colorSpace)
-{
-    Q_UNUSED(colorSpace);
-    return false;
-}
-
 QT_END_NAMESPACE
