@@ -314,6 +314,10 @@ protected:
 };
 #endif
 
+// a temporary mark to know if the patch has landed to Qt or not
+// https://codereview.qt-project.org/#/c/255384/
+#define QT_HAS_ENTER_LEAVE_PATCH
+
 #if QT_CONFIG(tabletevent)
 class Q_GUI_EXPORT QTabletEvent : public QSinglePointEvent
 {
