@@ -633,6 +633,11 @@ bool QWindowsTabletSupport::translateTabletPacketEvent()
             m_state = PenDown;
             m_mode = (mouseLocation - globalPosF).manhattanLength() > m_absoluteRange
                 ? MouseMode : PenMode;
+
+            // Krita doesn't support mouse mode. And this code may break
+            // normal painting, so we just disable it.
+            m_mode = PenMode;
+
             qCDebug(lcQpaTablet) << __FUNCTION__ << "mode=" << m_mode << "pen:"
                 << globalPosF << "mouse:" << mouseLocation;
         }
