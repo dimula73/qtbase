@@ -782,6 +782,19 @@ QFile::copy(const QString &newName)
     close();
     if (error() == QFile::NoError) {
         if (d->engine()->copy(newName)) {
+            /**
+             * Force copied file to be synched to disk, like we do it in
+             * alternative approach
+             */
+            QFile out(newName);
+            if (out.open(QIODevice::ReadWrite)) {
+                bool result = out.d_func()->engine()->syncToDisk();
+                out.close();
+            } else {
+                d->setError(QFile::CopyError, tr("Cannot open %1 for output").arg(newName));
+                return false;
+            }
+
             unsetError();
             return true;
         } else {
