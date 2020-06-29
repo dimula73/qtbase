@@ -427,7 +427,8 @@ bool QWindowSystemInterface::handleShortcutEvent(QWindow *window, ulong timestam
         window = QGuiApplication::focusWindow();
 
     QShortcutMap &shortcutMap = QGuiApplicationPrivate::instance()->shortcutMap;
-    if (shortcutMap.state() == QKeySequence::NoMatch) {
+    if (shortcutMap.state() != QKeySequence::ExactMatch) {
+
         // Check if the shortcut is overridden by some object in the event delivery path (typically the focus object).
         // If so, we should not look up the shortcut in the shortcut map, but instead deliver the event as a regular
         // key event, so that the target that accepted the shortcut override event can handle it. Note that we only
@@ -436,8 +437,12 @@ bool QWindowSystemInterface::handleShortcutEvent(QWindow *window, ulong timestam
         bool overridden = handleWindowSystemEvent<QWindowSystemInterfacePrivate::KeyEvent, SynchronousDelivery>
             (window,timestamp, QEvent::ShortcutOverride, keyCode, modifiers, nativeScanCode,
              nativeVirtualKey, nativeModifiers, text, autorepeat, count);
-        if (overridden)
+        if (overridden) {
+            if (shortcutMap.state() != QKeySequence::NoMatch) {
+                shortcutMap.resetState();
+            }
             return false;
+        }
     }
 
     // The shortcut event is dispatched as a QShortcutEvent, not a QKeyEvent, but we use
