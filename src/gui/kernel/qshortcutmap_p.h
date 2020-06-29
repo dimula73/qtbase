@@ -56,8 +56,10 @@ public:
     void dumpMap() const;
 #endif
 
-private:
     void resetState();
+
+private:
+
     QKeySequence::SequenceMatch nextState(QKeyEvent *e);
     void dispatchEvent(QKeyEvent *e);
 
