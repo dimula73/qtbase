@@ -1580,9 +1580,7 @@ bool QMenuPrivate::hasMouseMoved(const QPointF &globalPos) const
 {
     //determines if the mouse has moved (ie its initial position has
     //changed by more than QApplication::startDragDistance()
-    //or if there were at least 6 mouse motions)
-    return motions > 6 ||
-        QApplication::startDragDistance() < (mousePopupPos - globalPos).manhattanLength();
+    return QApplication::startDragDistance() < (mousePopupPos - globalPos).manhattanLength();
 }
 
 
