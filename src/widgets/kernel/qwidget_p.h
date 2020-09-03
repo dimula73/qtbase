@@ -725,6 +725,7 @@ public:
     uint usesDoubleBufferedGLContext : 1;
     uint mustHaveWindowHandle : 1;
     uint renderToTexture : 1;
+    uint renderToTextureWithPartialUpdates : 1;
     uint textureChildSeen : 1;
 #ifndef QT_NO_IM
     uint inheritsInputMethodHints : 1;

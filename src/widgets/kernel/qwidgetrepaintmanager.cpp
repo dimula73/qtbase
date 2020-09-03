@@ -205,8 +205,14 @@ void QWidgetRepaintManager::markDirty(const T &r, QWidget *widget, UpdateTime up
     // ---------------------------------------------------------------------------
 
     if (QWidgetPrivate::get(widget)->renderToTexture) {
-        if (!widget->d_func()->inDirtyList)
+        if (!widget->d_func()->inDirtyList) {
             addDirtyRenderToTextureWidget(widget);
+            if (QWidgetPrivate::get(widget)->renderToTextureWithPartialUpdates) {
+                widget->d_func()->dirty = r;
+            }
+        } else if (QWidgetPrivate::get(widget)->renderToTextureWithPartialUpdates) {
+            widget->d_func()->dirty += r;
+        }
         if (!updateRequestSent || updateTime == UpdateNow)
             sendUpdateRequest(tlw, updateTime);
         return;
@@ -812,18 +818,19 @@ void QWidgetRepaintManager::paintAndFlush()
         // prevent triggering unnecessary backingstore painting when only the
         // texture content changes. Check if we have such widgets in the special
         // dirty list.
-        QVarLengthArray<QWidget *, 16> paintPending;
+        QVarLengthArray<QPair<QWidget *, QRegion>, 16> paintPending;
         const int numPaintPending = dirtyRenderToTextureWidgets.size();
         paintPending.reserve(numPaintPending);
         for (int i = 0; i < numPaintPending; ++i) {
             QWidget *w = dirtyRenderToTextureWidgets.at(i);
-            paintPending << w;
+            paintPending << qMakePair(w,  w->d_func()->dirty);
             resetWidget(w);
         }
         dirtyRenderToTextureWidgets.clear();
         for (int i = 0; i < numPaintPending; ++i) {
-            QWidget *w = paintPending[i];
-            w->d_func()->sendPaintEvent(w->rect());
+            QWidget *w = paintPending[i].first;
+            const QRegion dirtyRegion = paintPending[i].second.isEmpty() ? QRegion(w->rect()) : paintPending[i].second;
+            w->d_func()->sendPaintEvent(dirtyRegion);
             if (w != tlw) {
                 QWidget *npw = w->nativeParentWidget();
                 if (hasPlatformWindow(w) || (npw && npw != tlw)) {

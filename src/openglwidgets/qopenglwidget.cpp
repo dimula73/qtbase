@@ -1174,6 +1174,7 @@ void QOpenGLWidget::setUpdateBehavior(UpdateBehavior updateBehavior)
 {
     Q_D(QOpenGLWidget);
     d->updateBehavior = updateBehavior;
+    d->renderToTextureWithPartialUpdates = updateBehavior == PartialUpdate;
 }
 
 /*!

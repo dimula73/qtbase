@@ -145,6 +145,7 @@ QWidgetPrivate::QWidgetPrivate(int version)
       , usesDoubleBufferedGLContext(0)
       , mustHaveWindowHandle(0)
       , renderToTexture(0)
+      , renderToTextureWithPartialUpdates(0)
       , textureChildSeen(0)
 #ifndef QT_NO_IM
       , inheritsInputMethodHints(0)
