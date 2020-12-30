@@ -401,6 +401,12 @@ bool QPngHandlerPrivate::readPngHeader()
 
     png_set_error_fn(png_ptr, nullptr, nullptr, qt_png_warning);
 
+#ifdef PNG_SET_USER_LIMITS_SUPPORTED
+      /* Remove the user limits, if any */
+      png_set_chunk_cache_max(png_ptr, 0);
+      png_set_chunk_malloc_max(png_ptr, 0);
+#endif    
+    
 #if defined(PNG_SET_OPTION_SUPPORTED) && defined(PNG_MAXIMUM_INFLATE_WINDOW)
     // Trade off a little bit of memory for better compatibility with existing images
     // Ref. "invalid distance too far back" explanation in libpng-manual.txt
@@ -748,6 +754,12 @@ bool QPNGImageWriter::writeImage(const QImage& image, int compression_in, const 
     png_set_benign_errors(png_ptr, 1);
 #endif
 
+#ifdef PNG_SET_USER_LIMITS_SUPPORTED
+      /* Remove the user limits, if any */
+      png_set_chunk_cache_max(png_ptr, 0);
+      png_set_chunk_malloc_max(png_ptr, 0);
+#endif    
+    
     info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
         png_destroy_write_struct(&png_ptr, nullptr);
