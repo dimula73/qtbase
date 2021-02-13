@@ -201,6 +201,8 @@ void QGestureRecognizer::unregisterRecognizer(Qt::GestureType type)
         return;
     if (!qAppPriv->gestureManager)
         return;
+    if (!QGestureManager::instance())
+        return;
     QGestureManager::instance()->unregisterGestureRecognizer(type);
 }
 
