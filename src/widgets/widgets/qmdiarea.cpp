@@ -2549,7 +2549,9 @@ bool QMdiArea::eventFilter(QObject *object, QEvent *event)
 
     Q_D(QMdiArea);
     // Global key events with Ctrl modifier.
-    if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease) {
+    if (event->type() == QEvent::KeyPress ||
+        event->type() == QEvent::KeyRelease ||
+        event->type() == QEvent::ShortcutOverride) {
 
         QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
         // Ignore key events without a Ctrl modifier (except for press/release on the modifier itself).
@@ -2561,7 +2563,7 @@ bool QMdiArea::eventFilter(QObject *object, QEvent *event)
         if (!area)
             return QAbstractScrollArea::eventFilter(object, event);
 
-        const bool keyPress = (event->type() == QEvent::KeyPress);
+        const bool keyPress = event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress;
 
         // 1) Ctrl-Tab once -> activate the previously active window.
         // 2) Ctrl-Tab (Tab, Tab, ...) -> iterate through all windows (activateNextSubWindow()).
