@@ -698,11 +698,36 @@ void QWindowsKeyMapper::updatePossibleKeyCodes(unsigned char *kbdBuffer, quint32
     keyLayout[vk_key].deadkeys |= isDeadKey ? 0x80 : 0;
     // Add a fall back key for layouts which don't do composition and show non-latin1 characters
     quint32 fallbackKey = winceKeyBend(vk_key);
+
     if (!fallbackKey || fallbackKey == Qt::Key_unknown) {
         fallbackKey = 0;
-        if (vk_key != keyLayout[vk_key].qtKey[0] && vk_key != keyLayout[vk_key].qtKey[1]
-            && vk_key < 0x5B && vk_key > 0x2F)
-            fallbackKey = vk_key;
+        if (vk_key != keyLayout[vk_key].qtKey[0] && vk_key != keyLayout[vk_key].qtKey[1]) {
+            if (vk_key < 0x5B && vk_key > 0x2F) {
+                fallbackKey = vk_key;
+            } else if (vk_key == VK_OEM_1) {
+                fallbackKey = Qt::Key_Semicolon;
+            } else if (vk_key == VK_OEM_2) {
+                fallbackKey = Qt::Key_Slash;
+            } else if (vk_key == VK_OEM_3) {
+                fallbackKey = Qt::Key_QuoteLeft;
+            } else if (vk_key == VK_OEM_4) {
+                fallbackKey = Qt::Key_BracketLeft;
+            } else if (vk_key == VK_OEM_5) {
+                fallbackKey = Qt::Key_Backslash;
+            } else if (vk_key == VK_OEM_6) {
+                fallbackKey = Qt::Key_BracketRight;
+            } else if (vk_key == VK_OEM_7) {
+                fallbackKey = Qt::Key_Apostrophe;
+            } else if (vk_key == VK_OEM_PLUS) {
+                fallbackKey = Qt::Key_Plus;
+            } else if (vk_key == VK_OEM_COMMA) {
+                fallbackKey = Qt::Key_Comma;
+            } else if (vk_key == VK_OEM_MINUS) {
+                fallbackKey = Qt::Key_Minus;
+            } else if (vk_key == VK_OEM_PERIOD) {
+                fallbackKey = Qt::Key_Period;
+            }
+        }
     }
     keyLayout[vk_key].qtKey[8] = fallbackKey;
 
