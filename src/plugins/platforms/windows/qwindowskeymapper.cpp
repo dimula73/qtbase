@@ -1394,10 +1394,16 @@ QList<QKeyCombination> QWindowsKeyMapper::possibleKeyCombinations(const QKeyEven
                 });
             // QTBUG-67200: Use the match with the least modifiers (prefer
             // Shift+9 over Alt + Shift + 9) resulting in more missing modifiers.
-            if (it == result.end())
-                result << matchedKey;
-            else if (missingMods > it->keyboardModifiers())
+            if (it == result.end()) {
+                // The shortcut mapper scans the possible keys in the reverse order,
+                // so we should put the fallback latin key into the front of the list
+                if (i != 8)
+                    result.append(matchedKey);
+                else
+                    result.prepend(matchedKey);
+            } else if (missingMods > it->keyboardModifiers()) {
                 *it = matchedKey;
+            }
         }
     }
     qCDebug(lcQpaEvents) << __FUNCTION__  << e << "nativeVirtualKey="
