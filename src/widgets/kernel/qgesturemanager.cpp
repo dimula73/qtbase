@@ -241,7 +241,8 @@ bool QGestureManager::filterEventThroughContexts(const QMultiMap<QObject *,
         QMultiMap<Qt::GestureType, QGestureRecognizer *>::const_iterator
                 typeToRecognizerIterator = const_recognizers.lowerBound(gestureType),
                 typeToRecognizerEnd = const_recognizers.upperBound(gestureType);
-        for (; typeToRecognizerIterator != typeToRecognizerEnd; ++typeToRecognizerIterator) {
+        for (; typeToRecognizerIterator != typeToRecognizerEnd &&
+               typeToRecognizerIterator != const_recognizers.constEnd(); ++typeToRecognizerIterator) {
             QGestureRecognizer *recognizer = typeToRecognizerIterator.value();
             QObject *target = context.key();
             QGesture *state = getState(target, recognizer, gestureType);
