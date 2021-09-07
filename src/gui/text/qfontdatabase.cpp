@@ -431,7 +431,7 @@ static void parseFontName(const QString &name, QString &foundry, QString &family
 {
     int i = name.indexOf(u'[');
     int li = name.lastIndexOf(u']');
-    if (i >= 0 && li >= 0 && i < li) {
+    if (i >= 0 && li >= 0 && i < li && li - i > 1) {
         foundry = name.mid(i + 1, li - i - 1);
         if (i > 0 && name[i - 1] == u' ')
             i--;
