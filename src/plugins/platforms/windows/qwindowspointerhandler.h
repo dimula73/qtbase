@@ -11,6 +11,7 @@
 #include <QtCore/qscopedpointer.h>
 #include <QtCore/qsharedpointer.h>
 #include <QtCore/qhash.h>
+#include <QtCore/qset.h>
 #include <QtGui/qevent.h>
 #include <qpa/qwindowsysteminterface.h>
 
@@ -55,6 +56,9 @@ private:
 #if QT_CONFIG(tabletevent)
     QList<QPointingDevicePtr> m_tabletDevices;
     QPointingDevicePtr m_activeTabletDevice;
+    // Used to track whether a particular pointer is being handled so we can synthesize the mouse events.
+    // Stores the pointerId of pointers that are being handled.
+    QSet<int> m_penPointersBeingHandled;
 #endif
     QHash<int, QWindowSystemInterface::TouchPoint> m_lastTouchPoints;
     QHash<DWORD, int> m_touchInputIDToTouchPointID;
