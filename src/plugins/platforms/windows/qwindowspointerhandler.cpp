@@ -744,7 +744,9 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
 
         const Qt::MouseButtons oldButtons = QGuiApplicationPrivate::tabletDevicePoint(uniqueId).state;
 
-        const bool accepted =
+        // accepted events should trigger manually synthesized mouse event
+        // to make sure Windows will not start any gensture
+        bool shouldSynthesize =
             QWindowSystemInterface::handleTabletEvent(target, msg.time, device.data(),
                                                       localPos, hiResGlobalPos, mouseButtons,
                                                       pressure, xTilt, yTilt, tangentialPressure,
@@ -765,10 +767,35 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
             }
         }
 
-        if (accepted && pressedButton != Qt::NoButton &&
-            (msg.message == WM_POINTERDOWN || msg.message == WM_POINTERUP)) {
+        if (msg.message == WM_POINTERDOWN) {
+            if (shouldSynthesize) {
+                m_penPointersBeingHandled.insert(uniqueId);
+            } else {
+                m_penPointersBeingHandled.remove(uniqueId);
+            }
+        } else if (msg.message == WM_POINTERUPDATE) {
+            shouldSynthesize = m_penPointersBeingHandled.contains(uniqueId);
+        } else if (msg.message == WM_POINTERUP) {
+            shouldSynthesize = m_penPointersBeingHandled.remove(uniqueId);
+        }
 
-            QEvent::Type type = (msg.message == WM_POINTERDOWN) ? QEvent::TabletPress : QEvent::TabletRelease;
+        if (shouldSynthesize && (
+            msg.message == WM_POINTERUPDATE ||
+            (
+                pressedButton != Qt::NoButton &&
+                (msg.message == WM_POINTERDOWN || msg.message == WM_POINTERUP)
+            )
+            )) {
+
+            QEvent::Type type;
+            if (msg.message == WM_POINTERDOWN) {
+                type = QEvent::TabletPress;
+            } else if (msg.message == WM_POINTERUP) {
+                type = QEvent::TabletRelease;
+            } else {
+                type = QEvent::TabletMove;
+            }
+
             synthesizeMouseEvent(type, pressedButton, *penInfo);
             return true;
         } else {
