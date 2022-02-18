@@ -170,7 +170,9 @@ bool QAccessibleWidget::isValid() const
 QWindow *QAccessibleWidget::window() const
 {
     const QWidget *w = widget();
-    Q_ASSERT(w);
+
+    if (!w) return 0;
+
     QWindow *result = w->windowHandle();
     if (!result) {
         if (const QWidget *nativeParent = w->nativeParentWidget())
