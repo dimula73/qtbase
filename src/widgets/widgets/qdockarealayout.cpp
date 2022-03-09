@@ -1402,6 +1402,10 @@ QRect QDockAreaLayoutInfo::separatorRect(const QList<int> &path) const
     if (path.size() > 1) {
         const QDockAreaLayoutItem &item = item_list.at(index);
         Q_ASSERT(item.subinfo != nullptr);
+        if (!item.subinfo) {
+            qWarning("QDockAreaLayoutInfo::separatorRect: child item does not have subinfo!");
+            return QRect();
+        }
         return item.subinfo->separatorRect(path.mid(1));
     }
     return separatorRect(index);
