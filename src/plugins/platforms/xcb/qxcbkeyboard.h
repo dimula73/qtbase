@@ -70,6 +70,12 @@ private:
     bool m_isAutoRepeat = false;
     xcb_keycode_t m_autoRepeatCode = 0;
 
+    struct KeyPressRecord {
+        int qtCode;
+        QString text;
+    };
+    QHash<xcb_keycode_t, KeyPressRecord> m_keyPressRegister;
+
     struct _mod_masks {
         uint alt;
         uint altgr;
