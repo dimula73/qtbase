@@ -877,17 +877,44 @@ void QXcbKeyboard::handleKeyEvent(xcb_window_t sourceWindow, QEvent::Type type, 
             m_isAutoRepeat = false;
     } else {
         m_isAutoRepeat = false;
-        // Look at the next event in the queue to see if we are auto-repeating.
-        connection()->eventQueue()->peek(QXcbEventQueue::PeekRetainMatch,
-                                         [this, time, code](xcb_generic_event_t *event, int type) {
-            if (type == XCB_KEY_PRESS) {
-                auto keyPress = reinterpret_cast<xcb_key_press_event_t *>(event);
-                m_isAutoRepeat = keyPress->time == time && keyPress->detail == code;
-                if (m_isAutoRepeat)
-                    m_autoRepeatCode = code;
-            }
-            return true;
-        });
+
+        if (m_keyPressRegister.contains(code) && m_keyPressRegister[code].qtCode == qtcode) {
+          // Look at the next event in the queue to see if we are auto-repeating.
+          connection()->eventQueue()->peek(QXcbEventQueue::PeekRetainMatch,
+                                           [this, time, code](xcb_generic_event_t *event, int type) {
+              if (type == XCB_KEY_PRESS) {
+                  auto keyPress = reinterpret_cast<xcb_key_press_event_t *>(event);
+                  m_isAutoRepeat = keyPress->time == time && keyPress->detail == code;
+                  if (m_isAutoRepeat)
+                      m_autoRepeatCode = code;
+              }
+              return true;
+          });
+        }
+    }
+
+    if (type == QEvent::KeyPress) {
+        if (m_keyPressRegister.contains(code)) {
+             qCWarning(lcQpaKeyboard) << "QXcbKeyboard::handleKeyEvent: key pressed, but it is already present in the registry"
+                                      << "code" << code
+                                      << "qtcode" << qtcode
+                                      << "registered qtcode" << m_keyPressRegister[code].qtCode;
+        }
+        m_keyPressRegister[code] = {qtcode, text};
+
+    } else {
+          if (m_keyPressRegister.contains(code)) {
+             if (m_keyPressRegister[code].qtCode != qtcode) {
+                  qCDebug(lcQpaKeyboard) << "QXcbKeyboard::handleKeyEvent: replacing qtcode on release" << qtcode << " -> " << m_keyPressRegister[code].qtCode;
+                  qtcode = m_keyPressRegister[code].qtCode;
+                  text = m_keyPressRegister[code].text;
+             }
+             m_keyPressRegister.remove(code);
+          } else {
+              qCWarning(lcQpaKeyboard) << "QXcbKeyboard::handleKeyEvent: key released, but it has no record in the registry"
+                                       << "code" << code
+                                       << "qtcode" << qtcode;
+          }
     }
 
     bool filtered = false;
