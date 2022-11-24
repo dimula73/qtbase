@@ -10,7 +10,9 @@
 
 #include <QtCore/qhash.h>
 #include <QtCore/qlist.h>
+#include <QtCore/qobject.h>
 #include <QtCore/qpoint.h>
+#include <QtCore/qrect.h>
 #include <QtCore/qsharedpointer.h>
 
 #include <wintab.h>
@@ -22,6 +24,7 @@ QT_BEGIN_NAMESPACE
 class QDebug;
 class QWindow;
 class QRect;
+class QScreen;
 
 struct QWindowsWinTab32DLL
 {
@@ -95,7 +98,7 @@ private:
 QDebug operator<<(QDebug d, const QWindowsTabletDeviceData &t);
 #endif
 
-class QWindowsTabletSupport
+class QWindowsTabletSupport : public QObject
 {
     Q_DISABLE_COPY_MOVE(QWindowsTabletSupport)
 
@@ -131,9 +134,14 @@ public:
     static int absoluteRange() { return m_absoluteRange; }
     static void setAbsoluteRange(int a) { m_absoluteRange = a; }
 
+private Q_SLOTS:
+    void slotPrimaryScreenChanged(QScreen *screen);
+    void slotScreenGeometryChanged();
+
 private:
     unsigned options() const;
     QWindowsTabletDeviceData tabletInit(qint64 uniqueId, UINT cursorType) const;
+    void updateEffectiveScreenGeometry();
     void updateData(QWindowsTabletDeviceData *data) const;
     void updateButtons(unsigned currentCursor, QWindowsTabletDeviceData *data) const;
     void enterProximity(ulong time = 0, QWindow *window = nullptr);
@@ -157,6 +165,9 @@ private:
     Mode m_mode = PenMode;
     State m_state = PenUp;
     ulong m_eventTime = 0;
+    QScreen *m_connectedScreen = 0;
+    QRect m_wintabScreenGeometry;
+    QRect m_effectiveScreenGeometry;
 };
 
 QT_END_NAMESPACE

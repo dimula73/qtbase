@@ -17,6 +17,7 @@
 #include <QtCore/qdebug.h>
 #include <QtCore/qvarlengtharray.h>
 #include <QtCore/qmath.h>
+#include <QtCore/qregularexpression.h>
 
 #include <private/qguiapplication_p.h>
 #include <QtCore/private/qsystemlibrary_p.h>
@@ -221,6 +222,10 @@ QWindowsTabletSupport::QWindowsTabletSupport(HWND window, HCTX context)
     // Some tablets don't support tilt, check if it is possible,
     if (QWindowsTabletSupport::m_winTab32DLL.wTInfo(WTI_DEVICES, DVC_ORIENTATION, &orientation))
         m_tiltSupport = orientation[0].axResolution && orientation[1].axResolution;
+
+    connect(qGuiApp, &QGuiApplication::primaryScreenChanged,
+            this, &QWindowsTabletSupport::slotPrimaryScreenChanged);
+    slotScreenGeometryChanged();
 }
 
 QWindowsTabletSupport::~QWindowsTabletSupport()
@@ -465,6 +470,84 @@ void QWindowsTabletSupport::updateButtons(unsigned currentCursor, QWindowsTablet
     data->buttonsMap[0x4] = logicalButtons[2];
 }
 
+void QWindowsTabletSupport::slotPrimaryScreenChanged(QScreen *screen)
+{
+    if (m_connectedScreen)
+        disconnect(m_connectedScreen, 0, this, 0);
+
+    m_connectedScreen = screen;
+
+    if (m_connectedScreen)
+        connect(m_connectedScreen, &QScreen::virtualGeometryChanged,
+                this, &QWindowsTabletSupport::slotScreenGeometryChanged);
+
+    slotScreenGeometryChanged();
+}
+
+void QWindowsTabletSupport::slotScreenGeometryChanged()
+{
+    /**
+     * Some Wintab implementations map the tablet area to the entire
+     * virtual screen, but others (e.g. Microsoft SP5) don't. They
+     * may input range to a single (built-in) screen. The logic is
+     * quite obvious: when the screen has integrated tablet device,
+     * one cannot map this tablet device to another display.
+     *
+     * For such devices, we should always request mapped area from
+     * lcSys{Org,Ext}{X,Y} fields and use it accordingly.
+     */
+
+    LOGCONTEXT lc;
+    QWindowsTabletSupport::m_winTab32DLL.wTInfo(WTI_DEFSYSCTX, 0, &lc);
+    m_wintabScreenGeometry = QRect(lc.lcSysOrgX, lc.lcSysOrgY, lc.lcSysExtX, lc.lcSysExtY);
+
+    qCDebug(lcQpaTablet) << "Updated tablet mapping: " << m_wintabScreenGeometry;
+    if (QGuiApplication::primaryScreen()) {
+        qCDebug(lcQpaTablet) << "   real desktop geometry: " << QWindowsScreen::virtualGeometry(QGuiApplication::primaryScreen()->handle());
+    }
+}
+
+void QWindowsTabletSupport::updateEffectiveScreenGeometry()
+{
+    QRect customGeometry;
+    bool dontUseWintabDesktopRect = false;
+
+    const QString geometry = qEnvironmentVariable("QT_WINTAB_DESKTOP_RECT");
+    if (!geometry.isEmpty()) {
+        QString tmp = QString::fromLatin1("([+-]?\\d+);([+-]?\\d+);(\\d+);(\\d+)");
+
+        QRegularExpression rex(tmp);
+        QRegularExpressionMatch match = rex.match(geometry);
+
+        if (match.hasMatch()) {
+            customGeometry.setRect(match.captured(1).toInt(),
+                                   match.captured(2).toInt(),
+                                   match.captured(3).toInt(),
+                                   match.captured(4).toInt());
+
+            qCDebug(lcQpaTablet) << "apply QT_WINTAB_DESKTOP_RECT:" << customGeometry;
+        } else {
+            qCWarning(lcQpaTablet) << "failed to parse QT_WINTAB_DESKTOP_RECT:" << geometry;
+        }
+    }
+
+    if (qEnvironmentVariableIsSet("QT_IGNORE_WINTAB_MAPPING")) {
+        if (!customGeometry.isValid()) {
+            qCDebug(lcQpaTablet) << "fallback mapping is requested via QT_IGNORE_WINTAB_MAPPING";
+        } else {
+            qCWarning(lcQpaTablet) << "ignoring QT_IGNORE_WINTAB_MAPPING, because QT_WINTAB_DESKTOP_RECT is set";
+        }
+        dontUseWintabDesktopRect = true;
+    }
+
+    m_effectiveScreenGeometry =
+       !customGeometry.isValid() ?
+        (dontUseWintabDesktopRect ?
+             QWindowsScreen::virtualGeometry(QGuiApplication::primaryScreen()->handle()) :
+            m_wintabScreenGeometry) :
+        customGeometry;
+}
+
 bool QWindowsTabletSupport::translateTabletProximityEvent(WPARAM /* wParam */, LPARAM lParam)
 {
     PACKET proximityBuffer[1]; // we are only interested in the first packet in this case
@@ -481,6 +564,8 @@ bool QWindowsTabletSupport::translateTabletProximityEvent(WPARAM /* wParam */, L
 
     if (!totalPacks)
         return false;
+
+    updateEffectiveScreenGeometry();
 
     const UINT currentCursor = proximityBuffer[0].pkCursor;
     UINT physicalCursorId;
@@ -587,8 +672,7 @@ bool QWindowsTabletSupport::translateTabletPacketEvent()
     //    in which case we snap the position to the mouse position.
     // It seems there is no way to find out the mode programmatically, the LOGCONTEXT orgX/Y/Ext
     // area is always the virtual desktop.
-    const QRect virtualDesktopArea =
-        QWindowsScreen::virtualGeometry(QGuiApplication::primaryScreen()->handle());
+    const QRect virtualDesktopArea = m_effectiveScreenGeometry;
 
     if (QWindowsContext::verbose > 1)  {
         qCDebug(lcQpaTablet) << __FUNCTION__ << "processing" << packetCount
