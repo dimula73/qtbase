@@ -46,6 +46,7 @@ struct QWindowsLibEGL
     EGLBoolean(EGLAPIENTRY *eglSwapBuffers)(EGLDisplay dpy, EGLSurface surface);
     const char *(EGLAPIENTRY *eglQueryString)(EGLDisplay dpy, EGLint name);
     QFunctionPointer(EGLAPIENTRY *eglGetProcAddress)(const char *procname);
+    EGLBoolean (EGLAPIENTRY * eglWaitNative)(EGLint engine);
 
     EGLDisplay(EGLAPIENTRY *eglGetPlatformDisplayEXT)(EGLenum platform, void *native_display,
                                                       const EGLint *attrib_list);
@@ -119,6 +120,7 @@ public:
                                 EGLContext context, EGLDisplay display, QOpenGLContext *shareContext);
     ~QWindowsEGLContext() override;
 
+    void beginFrame() override;
     bool makeCurrent(QPlatformSurface *surface) override;
     void doneCurrent() override;
     void swapBuffers(QPlatformSurface *surface) override;
