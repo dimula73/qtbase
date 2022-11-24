@@ -135,6 +135,7 @@ bool QWindowsLibEGL::init()
     RESOLVE(eglGetCurrentDisplay);
     RESOLVE(eglSwapBuffers);
     RESOLVE(eglQueryString);
+    RESOLVE(eglWaitNative);
     RESOLVE(eglGetProcAddress);
 
     if (!eglGetError || !eglGetDisplay || !eglInitialize || !eglGetProcAddress || !eglQueryString)
@@ -656,6 +657,16 @@ QFunctionPointer QWindowsEGLContext::getProcAddress(const char *procName)
                          << reinterpret_cast<void *>(procAddress);
 
     return procAddress;
+}
+
+void QWindowsEGLContext::beginFrame()
+{
+    // The D3D backend checks for buffer resizes inside eglWaitNative, so we should
+    // call this function before every frame to avoid window flicker
+    EGLBoolean result = QWindowsEGLStaticContext::libEGL.eglWaitNative(EGL_CORE_NATIVE_ENGINE);
+    if (result == EGL_FALSE) {
+        qCWarning(lcQpaGl, "QWindowsEGLContext::beforeCompose: eglWaitNative failed");
+    }
 }
 
 QT_END_NAMESPACE
