@@ -102,13 +102,14 @@ static constexpr quint32 getScancode(const MSG &msg)
 
 // Key recorder ------------------------------------------------------------------------[ start ] --
 struct KeyRecord {
-    KeyRecord(int c, int a, int s, const QString &t) : code(c), ascii(a), state(s), text(t) {}
+    KeyRecord(int c, int a, int s, const QString &t, int sc) : code(c), ascii(a), state(s), text(t), sentCode(sc) {}
     KeyRecord() {}
 
     int code;
     int ascii;
     int state;
     QString text;
+    int sentCode;
 };
 
 // We need to record the pressed keys in order to decide, whether the key event is an autorepeat
@@ -117,7 +118,7 @@ static const int QT_MAX_KEY_RECORDINGS = 64; // User has LOTS of fingers...
 struct KeyRecorder
 {
     inline KeyRecord *findKey(int code, bool remove);
-    inline void storeKey(int code, int ascii, int state, const QString& text);
+    inline void storeKey(int code, int ascii, int state, const QString& text, int sentCode);
     inline void clearKeys();
 
     int nrecs = 0;
@@ -155,7 +156,7 @@ KeyRecord *KeyRecorder::findKey(int code, bool remove)
     return result;
 }
 
-void KeyRecorder::storeKey(int code, int ascii, int state, const QString& text)
+void KeyRecorder::storeKey(int code, int ascii, int state, const QString& text, int sentCode)
 {
     Q_ASSERT_X(nrecs != QT_MAX_KEY_RECORDINGS,
                "Internal KeyRecorder",
@@ -165,7 +166,7 @@ void KeyRecorder::storeKey(int code, int ascii, int state, const QString& text)
         qWarning("Qt: Internal keyboard buffer overflow");
         return;
     }
-    records[nrecs++] = KeyRecord(code,ascii,state,text);
+    records[nrecs++] = KeyRecord(code,ascii,state,text,sentCode);
 }
 
 void KeyRecorder::clearKeys()
@@ -1136,6 +1137,13 @@ bool QWindowsKeyMapper::translateKeyEventInternal(QWindow *window, MSG msg,
         // (Consumed by modal widget is one possibility) So, remove the record from the list
         // This will stop the auto-repeat of the key, should a modifier change, for example
         if (rec && rec->state != state) {
+
+            const QString text = rec->text;
+            const Qt::KeyboardModifiers modifiers(state);
+
+            QWindowSystemInterface::handleExtendedKeyEvent(receiver, QEvent::KeyRelease, rec->sentCode,
+                                                           modifiers, scancode, quint32(msg.wParam), nModifiers, text, false);
+
             key_recorder.findKey(int(msg.wParam), true);
             rec = nullptr;
         }
@@ -1258,7 +1266,7 @@ bool QWindowsKeyMapper::translateKeyEventInternal(QWindow *window, MSG msg,
                 return false;
             }
 #endif // !QT_NO_SHORTCUT
-            key_recorder.storeKey(int(msg.wParam), a, state, text);
+            key_recorder.storeKey(int(msg.wParam), a, state, text, code);
 
             // QTBUG-71210
             // VK_PACKET specifies multiple characters. The system only sends the first
@@ -1317,8 +1325,13 @@ bool QWindowsKeyMapper::translateKeyEventInternal(QWindow *window, MSG msg,
                 result = true;
             }
         } else {
-            if (!code)
+            if (rec && rec->state != state) {
+                // if the state of modifiers has changed, make sure that
+                // the original key code is delivered
+                code = rec->sentCode;
+            } else if (!code) {
                 code = asciiToKeycode(rec->ascii ? char(rec->ascii) : char(msg.wParam), state);
+            }
 
             // Map SHIFT + Tab to SHIFT + BackTab, QShortcutMap knows about this translation
             if (code == Qt::Key_Tab && (state & Qt::ShiftModifier) == Qt::ShiftModifier)
