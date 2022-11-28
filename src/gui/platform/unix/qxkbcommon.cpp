@@ -46,6 +46,22 @@ struct Xkb2Qt
 
 static constexpr const auto KeyTbl = qMakeArray(
     QSortedData<
+    
+        // isUSKeyboardShortcut()-positive data
+
+        Xkb2Qt<'.',                  Qt::Key_Period>,
+        Xkb2Qt<',',                  Qt::Key_Comma>,
+        Xkb2Qt<';',                  Qt::Key_Semicolon>,
+        Xkb2Qt<'|',                  Qt::Key_Bar>,
+        Xkb2Qt<'/',                  Qt::Key_Slash>,
+        Xkb2Qt<'\\',                 Qt::Key_Backslash>,
+        Xkb2Qt<'-',                  Qt::Key_Minus>,
+        Xkb2Qt<'=',                  Qt::Key_Equal>,
+        Xkb2Qt<'`',                  Qt::Key_QuoteLeft>,
+        Xkb2Qt<'\'',                 Qt::Key_Apostrophe>,
+        Xkb2Qt<'[',                  Qt::Key_BracketLeft>,
+        Xkb2Qt<']',                  Qt::Key_BracketRight>,
+
         // misc keys
 
         Xkb2Qt<XKB_KEY_Escape,                  Qt::Key_Escape>,
@@ -395,6 +411,16 @@ static constexpr const auto KeyTbl = qMakeArray(
     >::Data{}
 );
 
+static bool isUSKeyboardShortcut(xkb_keysym_t sym)
+{
+    return sym == '.' || sym == ',' ||
+           sym == ';' || sym == '|' ||
+           sym == '/' || sym == '\\' ||
+           sym == '-' || sym == '=' ||
+           sym == '`' || sym == '\'' ||
+           sym == '[' || sym == ']';
+}
+
 xkb_keysym_t QXkbCommon::qxkbcommon_xkb_keysym_to_upper(xkb_keysym_t ks)
 {
     xkb_keysym_t lower, upper;
@@ -447,6 +473,7 @@ QList<xkb_keysym_t> QXkbCommon::toKeysym(QKeyEvent *event)
         return keysyms;
 
     // check if we have a direct mapping
+    // isUSKeyboardShortcut(keysym) is handled by the map
     auto it = std::find_if(KeyTbl.cbegin(), KeyTbl.cend(), [&qtKey](xkb2qt_t elem) {
         return elem.qt == static_cast<uint>(qtKey);
     });
@@ -491,7 +518,7 @@ int QXkbCommon::keysymToQtKey(xkb_keysym_t keysym, Qt::KeyboardModifiers modifie
         // With standard shortcuts we should prefer a latin character, this is
         // for checks like "some qkeyevent == QKeySequence::Copy" to work even
         // when using for example 'russian' keyboard layout.
-        if (!QXkbCommon::isLatin1(keysym)) {
+        if (!QXkbCommon::isLatin1(keysym) && !isUSKeyboardShortcut(keysym)) {
             xkb_keysym_t latinKeysym = QXkbCommon::lookupLatinKeysym(state, code);
             if (latinKeysym != XKB_KEY_NoSymbol)
                 keysym = latinKeysym;
@@ -674,7 +701,7 @@ QList<QKeyCombination> QXkbCommon::possibleKeyCombinations(xkb_state *state, con
         Qt::KeyboardModifiers neededMods = ModsTbl[i];
         if ((modifiers & neededMods) == neededMods) {
             if (i == 8) {
-                if (isLatin1(baseQtKey))
+                if (isLatin1(baseQtKey) || isUSKeyboardShortcut(baseQtKey))
                     continue;
                 // add a latin key as a fall back key
                 sym = lookupLatinKeysym(state, keycode);
@@ -765,7 +792,7 @@ xkb_keysym_t QXkbCommon::lookupLatinKeysym(xkb_state *state, xkb_keycode_t keyco
         xkb_level_index_t level = xkb_state_key_get_level(state, keycode, layout);
         if (xkb_keymap_key_get_syms_by_level(keymap, keycode, layout, level, &syms) != 1)
             continue;
-        if (isLatin1(syms[0])) {
+        if (isLatin1(syms[0]) || isUSKeyboardShortcut(syms[0])) {
             sym = syms[0];
             break;
         }
