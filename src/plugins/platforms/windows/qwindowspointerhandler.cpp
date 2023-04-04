@@ -662,9 +662,10 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
             << " flags=" << Qt::hex << penInfo->pointerInfo.pointerFlags;
 
     QPointingDevice::PointerType type;
-    // Since it may be the middle button, so if the checks fail then it should
-    // be set to Middle if it was used.
-    Qt::MouseButtons mouseButtons = queryMouseButtons();
+    // Do **not** initialize mouseButtons with queryMouseButtons() because
+    // it will break handling of QGuiApplicationPrivate::tabletDevicePoint(uniqueId).state
+    // (the state will never catch TabletRelease events)
+    Qt::MouseButtons mouseButtons;
 
     const bool pointerInContact = IS_POINTER_INCONTACT_WPARAM(msg.wParam);
     if (pointerInContact)
