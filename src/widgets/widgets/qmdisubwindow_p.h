@@ -253,6 +253,7 @@ public:
     QString originalWindowTitle();
     QString originalWindowTitleHelper() const;
     void setNewWindowTitle();
+    bool alwaysShowSubwindowTitle() const;
 
     inline int titleBarHeight() const
     {

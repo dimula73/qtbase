@@ -34,7 +34,8 @@ class Q_WIDGETS_EXPORT QMdiArea : public QAbstractScrollArea
 #endif
 public:
     enum AreaOption {
-        DontMaximizeSubWindowOnActivation = 0x1
+        DontMaximizeSubWindowOnActivation = 0x1,
+        AlwaysShowSubwindowNameInTitleBar = 0x2
     };
     Q_DECLARE_FLAGS(AreaOptions, AreaOption)
 
