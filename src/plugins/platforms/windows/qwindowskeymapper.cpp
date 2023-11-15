@@ -1325,11 +1325,12 @@ bool QWindowsKeyMapper::translateKeyEventInternal(QWindow *window, MSG msg,
                 result = true;
             }
         } else {
-            if (rec && rec->state != state) {
+            if (rec) {
                 // if the state of modifiers has changed, make sure that
                 // the original key code is delivered
                 code = rec->sentCode;
             } else if (!code) {
+                // this branch should never happen, but who knows...
                 code = asciiToKeycode(rec->ascii ? char(rec->ascii) : char(msg.wParam), state);
             }
 
