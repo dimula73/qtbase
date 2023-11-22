@@ -1575,6 +1575,10 @@ void QWidgetLineControl::processShortcutOverrideEvent(QKeyEvent *ke)
         if (!isReadOnly())
             ke->accept();
     } else if (ke->modifiers() == Qt::NoModifier || ke->modifiers() == Qt::ShiftModifier
+#ifdef Q_OS_WIN
+               // we should disallow AltGr shortcuts if a text box is in focus
+               || ke->modifiers() == (Qt::ControlModifier | Qt::AltModifier)
+#endif
                || ke->modifiers() == Qt::KeypadModifier) {
         if (ke->key() < Qt::Key_Escape) {
             if (!isReadOnly())
