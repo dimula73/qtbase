@@ -4,6 +4,7 @@
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/qvarlengtharray.h>
+#include <QtCore/QFileInfo>
 #include <QtGui/QKeyEvent>
 #include <QtGui/QGuiApplication>
 
@@ -47,7 +48,29 @@ void QComposeInputContext::ensureInitialized()
          locale = "C";
     qCDebug(lcXkbCompose) << "detected locale:" << locale;
 
-    m_composeTable = xkb_compose_table_new_from_locale(m_XkbContext, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
+    QString localeString = QString::fromLatin1(locale);
+    QString localePath = "/usr/share/X11/locale";
+    const char *customLocalePath = getenv("XLOCALEDIR");
+    if (!locale || !*locale) {
+        localePath = QString::fromLatin1(customLocalePath);
+    }
+    localePath += "/" + localeString;
+
+    /**
+     * xkb-compose fails to locate the compose table if locale is set
+     * to 'en_US' instead of 'en_US.UTF-8', so we should make it happy
+     * and correct the string accordingly.
+     *
+     * See: https://bugs.kde.org/show_bug.cgi?id=469691
+     */
+    if (!QFileInfo(localePath).exists()) {
+        if (QFileInfo(localePath + ".UTF-8").exists()) {
+            localeString = localeString + ".UTF-8";
+            qCDebug(lcXkbCompose) << "correcting locale to:" << localeString;
+        }
+    }
+
+    m_composeTable = xkb_compose_table_new_from_locale(m_XkbContext, localeString.toLatin1(), XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (m_composeTable)
         m_composeState = xkb_compose_state_new(m_composeTable, XKB_COMPOSE_STATE_NO_FLAGS);
 
