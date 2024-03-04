@@ -1003,10 +1003,9 @@ static QByteArray searchIncludePaths(const QList<Parser::IncludePath> &includepa
         fprintf(stderr, "debug-includes: searching for '%s'\n", include.constData());
     }
 
-    for (const Parser::IncludePath &p : includepaths) {
-        if (fi.exists())
-            break;
+    bool found = false;
 
+    for (const Parser::IncludePath &p : includepaths) {
         if (p.isFrameworkPath) {
             const qsizetype slashPos = include.indexOf('/');
             if (slashPos == -1)
@@ -1024,13 +1023,13 @@ static QByteArray searchIncludePaths(const QList<Parser::IncludePath> &includepa
 
         // try again, maybe there's a file later in the include paths with the same name
         // (186067)
-        if (fi.isDir()) {
-            fi = QFileInfo();
-            continue;
+        if (fi.exists() && !fi.isDir()) {
+            found = true;
+            break;
         }
     }
 
-    if (!fi.exists() || fi.isDir()) {
+    if (!found) {
         if (Q_UNLIKELY(debugIncludes)) {
             fprintf(stderr, "debug-includes: can't find '%s'\n", include.constData());
         }
