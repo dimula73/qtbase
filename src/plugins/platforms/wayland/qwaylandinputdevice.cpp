@@ -315,7 +315,7 @@ QWaylandInputDevice::Touch::~Touch()
 }
 
 QWaylandInputDevice::QWaylandInputDevice(QWaylandDisplay *display, int version, uint32_t id)
-    : QtWayland::wl_seat(display->wl_registry(), id, qMin(version, 9))
+    : QtWayland::wl_seat(display->wl_registry(), id, qMin(version, 10))
     , mQDisplay(display)
     , mDisplay(display->wl_display())
     , mId(id)
@@ -1348,7 +1348,19 @@ void QWaylandInputDevice::Keyboard::keyboard_key(uint32_t serial, uint32_t time,
         QString text = QXkbCommon::lookupString(mXkbState.get(), code);
 
         QEvent::Type type = isDown ? QEvent::KeyPress : QEvent::KeyRelease;
-        handleKey(time, type, qtkey, modifiers, code, sym, mNativeModifiers, text);
+        bool isAutoRepeat = state == WL_KEYBOARD_KEY_STATE_REPEATED;
+        if (isAutoRepeat && mRepeatRate > 0) {
+            qCWarning(lcQpaWayland, "received key repeat event while repeat rate is non-zero");
+            return;
+        }
+        if (isAutoRepeat && !xkb_keymap_key_repeats(mXkbKeymap.get(), code)) {
+            qCWarning(lcQpaWayland, "received key repeat event for a key that should not be repeated");
+            return;
+        }
+        if (isAutoRepeat)
+            handleKey(time, QEvent::KeyRelease, qtkey, modifiers, code, sym, mNativeModifiers, text, isAutoRepeat);
+
+        handleKey(time, type, qtkey, modifiers, code, sym, mNativeModifiers, text, isAutoRepeat);
 
         if (state == WL_KEYBOARD_KEY_STATE_PRESSED && xkb_keymap_key_repeats(mXkbKeymap.get(), code) && mRepeatRate > 0) {
             mRepeatKey.key = qtkey;
