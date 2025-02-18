@@ -1552,17 +1552,29 @@ static DeployResult deploy(const Options &options, const QMap<QString, QString> 
                 if (!icuVersion.isEmpty())  {
                     if (optVerboseLevel > 1)
                         std::wcout << "Adding ICU version " << icuVersion << '\n';
-                    QString icuLib = QStringLiteral("icudt") + icuVersion
-                            + QLatin1StringView(windowsSharedLibrarySuffix);
+
+                    QStringList icuLibCandidates;
+
+                    // ICU libraries may have a form of icudtXX.dll or icudt-XX.dll. The latter version is usually
+                    // produces by Meson wrappers over ICU.
+                    icuLibCandidates << QStringLiteral("icudt") + icuVersion + QLatin1StringView(windowsSharedLibrarySuffix);
+                    icuLibCandidates << QStringLiteral("icudt-") + icuVersion + QLatin1StringView(windowsSharedLibrarySuffix);
+
                     // Some packages contain debug dlls of ICU libraries even though it's a C
                     // library and the official packages do not differentiate (QTBUG-87677)
                     if (result.isDebug) {
-                        const QString icuLibCandidate = QStringLiteral("icudtd") + icuVersion
-                                + QLatin1StringView(windowsSharedLibrarySuffix);
+                        icuLibCandidates << QStringLiteral("icudtd") + icuVersion + QLatin1StringView(windowsSharedLibrarySuffix);
+                        icuLibCandidates << QStringLiteral("icudtd-") + icuVersion + QLatin1StringView(windowsSharedLibrarySuffix);
+                    }
+
+                    QString icuLib = icuLibCandidates.front();
+                    for (const QString &icuLibCandidate : std::as_const(icuLibCandidates)) {
                         if (!findInPath(icuLibCandidate).isEmpty()) {
                             icuLib = icuLibCandidate;
+                            break;
                         }
                     }
+
                     icuLibs.push_back(icuLib);
                 }
                 for (const QString &icuLib : std::as_const(icuLibs)) {
