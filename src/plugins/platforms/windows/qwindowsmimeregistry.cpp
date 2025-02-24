@@ -849,6 +849,10 @@ bool QWindowsMimeImage::canConvertToMime(const QString &mimeType, IDataObject *p
 bool QWindowsMimeImage::canConvertFromMime(const FORMATETC &formatetc, const QMimeData *mimeData) const
 {
     int cf = getCf(formatetc);
+
+    if (cf != CF_DIBV5 && cf != CF_DIB && cf != CF_PNG)
+        return false;
+    
     if (!mimeData->hasImage())
         return false;
     const QImage image = qvariant_cast<QImage>(mimeData->imageData());
