@@ -853,14 +853,11 @@ QList<FORMATETC> QWindowsMimeImage::formatsForMime(const QString &mimeType, cons
 {
     QList<FORMATETC> formatetcs;
     if (mimeData->hasImage() && mimeType == u"application/x-qt-image") {
-        auto image = qvariant_cast<QImage>(mimeData->imageData());
-        if (!image.isNull() && image.hasAlphaChannel()) {
-            // CF_PNG is the only format modern MS Office (and other apps that
-            // deliver image data via TYMED_ISTREAM) reads with alpha
-            // preserved (QTBUG-126191).
-            formatetcs += setCf(CF_PNG);
-            formatetcs += setCf(CF_DIBV5);
-        }
+        // CF_PNG is the only format modern MS Office (and other apps that
+        // deliver image data via TYMED_ISTREAM) reads with alpha
+        // preserved (QTBUG-126191).
+        formatetcs += setCf(CF_PNG);
+        formatetcs += setCf(CF_DIBV5);
         formatetcs += setCf(CF_DIB);
     }
     if (!formatetcs.isEmpty())
