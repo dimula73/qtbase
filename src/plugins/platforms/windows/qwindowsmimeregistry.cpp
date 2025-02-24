@@ -822,9 +822,7 @@ QList<FORMATETC> QWindowsMimeImage::formatsForMime(const QString &mimeType, cons
     QList<FORMATETC> formatetcs;
     if (mimeData->hasImage() && mimeType == u"application/x-qt-image") {
         //add DIBV5 if image has alpha channel. Do not add CF_PNG here as it will confuse MS Office (QTBUG47656).
-        auto image = qvariant_cast<QImage>(mimeData->imageData());
-        if (!image.isNull() && image.hasAlphaChannel())
-            formatetcs += setCf(CF_DIBV5);
+        formatetcs += setCf(CF_DIBV5);
         formatetcs += setCf(CF_DIB);
     }
     if (!formatetcs.isEmpty())
