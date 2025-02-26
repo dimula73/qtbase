@@ -61,7 +61,6 @@ private:
     QPointer<QWindow> m_windowUnderPointer;
     QPointer<QWindow> m_currentWindow;
     QWindow *m_previousCaptureWindow = nullptr;
-    bool m_needsEnterOnPointerUpdate = false;
     QEvent::Type m_lastEventType = QEvent::None;
     Qt::MouseButton m_lastEventButton = Qt::NoButton;
     DWORD m_pointerType = 0;
