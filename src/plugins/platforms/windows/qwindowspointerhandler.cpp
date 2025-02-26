@@ -568,8 +568,15 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
                                                MSG msg, PVOID vPenInfo)
 {
 #if QT_CONFIG(tabletevent)
-    if (et & QtWindows::NonClientEventFlag)
+    if (et & QtWindows::NonClientEventFlag) {
+        // When the pointer exits into non-client area of the window we should emit the Leave
+        // even to be consistent with how normal mouse behaves
+        if (m_windowUnderPointer && m_windowUnderPointer == m_currentWindow) {
+            QWindowSystemInterface::handleLeaveEvent(m_windowUnderPointer);
+            m_currentWindow = nullptr;
+        }
         return false; // Let DefWindowProc() handle Non Client messages.
+    }
 
     auto *penInfo = static_cast<POINTER_PEN_INFO *>(vPenInfo);
 
@@ -648,9 +655,9 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
     case WM_POINTERENTER: {
         QWindowSystemInterface::handleTabletEnterLeaveProximityEvent(window, msg.time, device.data(), true);
         m_windowUnderPointer = window;
-        // The local coordinates may fall outside the window.
-        // Wait until the next update to send the enter event.
-        m_needsEnterOnPointerUpdate = true;
+        // After entering the proximity the pointer should still pass the
+        // non-client area, so we cannot emit the enter event right now and
+        // should postpone that till the first WM_POINTERUPDATE event
         break;
     }
     case WM_POINTERLEAVE:
@@ -669,19 +676,17 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
             target = m_windowUnderPointer;
         if (!target)
             target = window;
-
-        if (m_needsEnterOnPointerUpdate) {
-            m_needsEnterOnPointerUpdate = false;
-            if (window != m_currentWindow) {
-                // make sure we subscribe to leave events for this window
-                trackLeave(hwnd);
-
-                QWindowSystemInterface::handleEnterEvent(window, localPos, globalPos);
-                m_currentWindow = window;
-                if (QWindowsWindow *wumPlatformWindow = QWindowsWindow::windowsWindowOf(target))
-                    wumPlatformWindow->applyCursor();
-            }
+        
+        if (window != m_currentWindow) {
+            // make sure we subscribe to leave events for this window
+            trackLeave(hwnd);
+            
+            QWindowSystemInterface::handleEnterEvent(window, localPos, globalPos);
+            m_currentWindow = window;
+            if (QWindowsWindow *wumPlatformWindow = QWindowsWindow::windowsWindowOf(target))
+            wumPlatformWindow->applyCursor();
         }
+        
         const auto *keyMapper = QWindowsContext::instance()->keyMapper();
         const Qt::KeyboardModifiers keyModifiers = keyMapper->queryKeyboardModifiers();
 
