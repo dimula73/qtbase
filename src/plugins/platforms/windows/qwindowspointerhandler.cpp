@@ -678,8 +678,6 @@ bool QWindowsPointerHandler::translatePenEvent(QWindow *window, HWND hwnd, QtWin
             target = window;
         
         if (window != m_currentWindow) {
-            // make sure we subscribe to leave events for this window
-            trackLeave(hwnd);
             
             QWindowSystemInterface::handleEnterEvent(window, localPos, globalPos);
             m_currentWindow = window;
