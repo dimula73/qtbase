@@ -463,11 +463,25 @@ void QWindowsTabletSupport::updateButtons(unsigned currentCursor, QWindowsTablet
     //          See https://bugs.kde.org/show_bug.cgi?id=359561
     BYTE logicalButtons[32];
     memset(logicalButtons, 0, 32);
-    m_winTab32DLL.wTInfo(WTI_CURSORS + currentCursor, CSR_SYSBTNMAP, &logicalButtons);
+    const int numMappedButtons = m_winTab32DLL.wTInfo(WTI_CURSORS + currentCursor, CSR_SYSBTNMAP, &logicalButtons);
+
     data->buttonsMap.clear();
-    data->buttonsMap[0x1] = logicalButtons[0];
-    data->buttonsMap[0x2] = logicalButtons[1];
-    data->buttonsMap[0x4] = logicalButtons[2];
+
+    if (numMappedButtons <= 0 || !logicalButtons[0]) {
+        /**
+         * Some WinTab drivers (e.g. Lenovo Yoga C940) fail to report tablet
+         * button mapping and return zeros in the entire mapping array. If that
+         * is the case, map stylus press to the left mouse button as a fallback.
+         */
+        qCWarning(lcQpaTablet) << "WARNING: driver reports that stylus press is not mapped to any mouse button. Force-map it to left button";
+        data->buttonsMap[0x1] = 0x1;
+        data->buttonsMap[0x2] = 0x2;
+        data->buttonsMap[0x4] = 0x4;
+    } else {
+        data->buttonsMap[0x1] = logicalButtons[0];
+        data->buttonsMap[0x2] = logicalButtons[1];
+        data->buttonsMap[0x4] = logicalButtons[2];
+    }
 }
 
 void QWindowsTabletSupport::slotPrimaryScreenChanged(QScreen *screen)
