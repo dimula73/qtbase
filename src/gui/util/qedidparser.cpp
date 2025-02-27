@@ -7,6 +7,7 @@
 
 #include "qedidparser_p.h"
 #include "qedidvendortable_p.h"
+#include "qendian.h"
 
 #define EDID_DESCRIPTOR_ALPHANUMERIC_STRING 0xfe
 #define EDID_DESCRIPTOR_PRODUCT_NAME 0xfc
@@ -16,6 +17,7 @@
 #define EDID_OFFSET_DATA_BLOCKS 0x36
 #define EDID_OFFSET_LAST_BLOCK 0x6c
 #define EDID_OFFSET_PNP_ID 0x08
+#define EDID_OFFSET_MODEL_ID 0x0A
 #define EDID_OFFSET_SERIAL 0x0c
 #define EDID_PHYSICAL_WIDTH 0x15
 #define EDID_OFFSET_PHYSICAL_HEIGHT 0x16
@@ -85,20 +87,24 @@ bool QEdidParser::parse(const QByteArray &blob)
      * 7654321076543210
      * |\---/\---/\---/
      * R  C1   C2   C3 */
-    char pnpId[3];
-    pnpId[0] = 'A' + ((data[EDID_OFFSET_PNP_ID] & 0x7c) / 4) - 1;
-    pnpId[1] = 'A' + ((data[EDID_OFFSET_PNP_ID] & 0x3) * 8) + ((data[EDID_OFFSET_PNP_ID + 1] & 0xe0) / 32) - 1;
-    pnpId[2] = 'A' + (data[EDID_OFFSET_PNP_ID + 1] & 0x1f) - 1;
+    char pnpId[6] = "";
+    const quint16 encodedPnpId = qFromBigEndian<quint16>(data + EDID_OFFSET_PNP_ID);
+    pnpId[2] = quint8(encodedPnpId & 0x1F) + 'A' - 1;
+    pnpId[1] = quint8(encodedPnpId >> 5 & 0x1F) + 'A' - 1;
+    pnpId[0] = quint8(encodedPnpId >> 10 & 0x1F) + 'A' - 1;
+    pnpId[3] = '\0';
+
+    const quint16 productId = qFromLittleEndian<quint16>(data + EDID_OFFSET_MODEL_ID);
+
+    const QString pnpIdString = QString::fromLatin1(pnpId);
+    model = pnpIdString + QString::number(productId, 16);
 
     // Clear manufacturer
     manufacturer = QString();
 
     // Serial number, will be overwritten by an ASCII descriptor
     // when and if it will be found
-    quint32 serial = data[EDID_OFFSET_SERIAL]
-            + (data[EDID_OFFSET_SERIAL + 1] << 8)
-            + (data[EDID_OFFSET_SERIAL + 2] << 16)
-            + (data[EDID_OFFSET_SERIAL + 3] << 24);
+    const quint32 serial = qFromLittleEndian<quint32>(data + EDID_OFFSET_SERIAL);
     if (serial > 0)
         serialNumber = QString::number(serial);
     else
@@ -111,12 +117,22 @@ bool QEdidParser::parse(const QByteArray &blob)
         if (data[offset] != 0 || data[offset + 1] != 0 || data[offset + 2] != 0)
             continue;
 
-        if (data[offset + 3] == EDID_DESCRIPTOR_PRODUCT_NAME)
-            model = parseEdidString(&data[offset + 5]);
-        else if (data[offset + 3] == EDID_DESCRIPTOR_ALPHANUMERIC_STRING)
-            identifier = parseEdidString(&data[offset + 5]);
-        else if (data[offset + 3] == EDID_DESCRIPTOR_SERIAL_NUMBER)
-            serialNumber = parseEdidString(&data[offset + 5]);
+        if (data[offset + 3] == EDID_DESCRIPTOR_PRODUCT_NAME) {
+            const QString value = parseEdidString(&data[offset + 5]);
+            if (!value.isEmpty()) {
+                model = value;
+            }
+        } else if (data[offset + 3] == EDID_DESCRIPTOR_ALPHANUMERIC_STRING) {
+            const QString value = parseEdidString(&data[offset + 5]);
+            if (!value.isEmpty()) {
+                identifier = value;
+            }
+        } else if (data[offset + 3] == EDID_DESCRIPTOR_SERIAL_NUMBER) {
+            const QString value = parseEdidString(&data[offset + 5]);
+            if (!value.isEmpty()) {
+                serialNumber = value;
+            }
+        }
     }
 
     // Try to use cache first because it is potentially more updated
