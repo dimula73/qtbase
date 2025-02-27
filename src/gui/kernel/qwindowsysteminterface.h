@@ -40,6 +40,12 @@ public:
     struct AsynchronousDelivery {};
     struct DefaultDelivery {};
 
+#ifdef Q_OS_WIN
+    using TabletEventDeliveryType = SynchronousDelivery;
+#else
+    using TabletEventDeliveryType = DefaultDelivery;
+#endif
+
     template<typename Delivery = QWindowSystemInterface::DefaultDelivery>
     static bool handleMouseEvent(QWindow *window, const QPointF &local, const QPointF &global,
                                  Qt::MouseButtons state, Qt::MouseButton button, QEvent::Type type,
