@@ -2998,6 +2998,7 @@ void QGuiApplicationPrivate::processTabletEvent(QWindowSystemInterfacePrivate::T
 
     QGuiApplication::sendSpontaneousEvent(window, &tabletEvent);
     pointData.state = e->buttons;
+    e->eventAccepted = tabletEvent.isAccepted();
     if (!tabletEvent.isAccepted()
         && !QWindowSystemInterfacePrivate::TabletEvent::platformSynthesizesMouse
         && qApp->testAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents)) {
