@@ -463,7 +463,7 @@ QKeySequence::SequenceMatch QShortcutMap::find(QKeyEvent *e, int ignoredModifier
         // If we managed to match some shortcuts from the background
         // layers, there is no need to try upper layers. Different
         // layouts may overlap and we consider latin as a priority.
-        if (oneKSResult == QKeySequence::ExactMatch) {
+        if (bestMatchForEntry == QKeySequence::ExactMatch) {
             break;
         }
     }
