@@ -33,6 +33,16 @@ Q_NORETURN void qAbort()
     // [support.start.term]). So we bypass std::abort() and directly
     // terminate the application.
 
+    // Fast-fail exception bypasses DrMingw and we don't want that. Try
+    // something else first. A debug breakpoint (`int 3` on x86) should
+    // terminate the process when not attached to a debugger, and it should
+    // trigger DrMingw to dump the backtrace.
+#  if defined(Q_CC_MSVC)
+    __debugbreak();
+#  else
+    DebugBreak();
+#  endif
+
 #  if defined(Q_CC_MSVC)
     if (IsProcessorFeaturePresent(PF_FASTFAIL_AVAILABLE))
         __fastfail(FAST_FAIL_FATAL_APP_EXIT);
