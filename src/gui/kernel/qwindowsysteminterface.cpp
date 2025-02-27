@@ -894,7 +894,7 @@ bool QWindowSystemInterface::handleTabletEvent(QWindow *window, ulong timestamp,
                                                qreal tangentialPressure, qreal rotation, int z,
                                                Qt::KeyboardModifiers modifiers)
 {
-    return handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletEvent>(window,
+    return handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletEvent, SynchronousDelivery>(window,
         timestamp,
         QHighDpi::fromNativeLocalPosition(local, window),
         QHighDpi::fromNativeGlobalPosition(global, window),
@@ -952,8 +952,8 @@ bool QWindowSystemInterface::handleTabletEnterLeaveProximityEvent(QWindow *windo
     Q_UNUSED(z);
     Q_UNUSED(modifiers);
     return inProximity
-        ? handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletEnterProximityEvent>(timestamp, device)
-        : handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletLeaveProximityEvent>(timestamp, device);
+        ? handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletEnterProximityEvent, SynchronousDelivery>(timestamp, device)
+        : handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletLeaveProximityEvent, SynchronousDelivery>(timestamp, device);
 }
 
 bool QWindowSystemInterface::handleTabletEnterLeaveProximityEvent(QWindow *window, const QPointingDevice *device,
@@ -974,7 +974,7 @@ bool QWindowSystemInterface::handleTabletEnterProximityEvent(ulong timestamp, in
     const QPointingDevice *device = QPointingDevicePrivate::tabletDevice(QInputDevice::DeviceType(deviceType),
                                                                          QPointingDevice::PointerType(pointerType),
                                                                          QPointingDeviceUniqueId::fromNumericId(uid));
-    return handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletEnterProximityEvent>(timestamp, device);
+    return handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletEnterProximityEvent, SynchronousDelivery>(timestamp, device);
 }
 
 void QWindowSystemInterface::handleTabletEnterProximityEvent(int deviceType, int pointerType, qint64 uid)
@@ -988,7 +988,7 @@ bool QWindowSystemInterface::handleTabletLeaveProximityEvent(ulong timestamp, in
     const QPointingDevice *device = QPointingDevicePrivate::tabletDevice(QInputDevice::DeviceType(deviceType),
                                                                          QPointingDevice::PointerType(pointerType),
                                                                          QPointingDeviceUniqueId::fromNumericId(uid));
-    return handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletLeaveProximityEvent>(timestamp, device);
+    return handleWindowSystemEvent<QWindowSystemInterfacePrivate::TabletLeaveProximityEvent, SynchronousDelivery>(timestamp, device);
 }
 
 void QWindowSystemInterface::handleTabletLeaveProximityEvent(int deviceType, int pointerType, qint64 uid)
