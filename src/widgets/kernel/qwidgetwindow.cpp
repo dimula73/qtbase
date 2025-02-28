@@ -1095,6 +1095,18 @@ void QWidgetWindow::handleTabletEvent(QTabletEvent *event)
         event->setAccepted(ev.isAccepted());
     }
 
+    /**
+     * Synthesize Enter/Leave events if it is requested by the system and user
+     */
+    if (widget != qt_last_mouse_receiver &&
+        event->isAccepted() &&
+        !QWindowSystemInterfacePrivate::TabletEvent::platformSynthesizesMouse &&
+        qApp->testAttribute(Qt::AA_SynthesizeMouseForUnhandledTabletEvents)) {
+
+        QApplicationPrivate::dispatchEnterLeave(widget, qt_last_mouse_receiver, event->globalPosition());
+        qt_last_mouse_receiver = widget;
+    }
+
     if (event->type() == QEvent::TabletRelease && event->buttons() == Qt::NoButton)
         qt_tablet_target = nullptr;
 }
