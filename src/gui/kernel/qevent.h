@@ -318,6 +318,10 @@ protected:
 // https://codereview.qt-project.org/#/c/255384/
 #define QT_HAS_ENTER_LEAVE_PATCH
 
+// a temporary mark to know if Qt has a fix for unbalanced key
+// press/release events when using non-latin layout
+#define QT_HAS_UNBALANCED_KEY_PRESS_RELEASE_PATCH
+
 #if QT_CONFIG(tabletevent)
 class Q_GUI_EXPORT QTabletEvent : public QSinglePointEvent
 {
