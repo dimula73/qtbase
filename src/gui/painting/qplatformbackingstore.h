@@ -20,6 +20,7 @@
 
 #include <QtGui/qwindow.h>
 #include <QtGui/qregion.h>
+#include <QtGui/qcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -112,14 +113,17 @@ public:
     QRect clipRect(int index) const;
     void *source(int index);
     Flags flags(int index) const;
+    QColorSpace colorSpace(int index) const;
     void lock(bool on);
     bool isLocked() const;
 
     void appendTexture(void *source, QRhiTexture *texture, const QRect &geometry,
-                       const QRect &clipRect = QRect(), Flags flags = { });
+                       const QRect &clipRect = QRect(), Flags flags = { },
+                       QColorSpace colorSpace = { });
 
     void appendTexture(void *source, QRhiTexture *textureLeft, QRhiTexture *textureRight, const QRect &geometry,
-                       const QRect &clipRect = QRect(), Flags flags = { });
+                       const QRect &clipRect = QRect(), Flags flags = { },
+                       QColorSpace colorSpace = { });
     void clear();
 
  Q_SIGNALS:

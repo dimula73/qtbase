@@ -547,6 +547,7 @@ public:
 
     QWidgetPrivate::TextureData texture() const override;
     QPlatformTextureList::Flags textureListFlags() override;
+    QColorSpace colorSpace() const override;
 
     QPlatformBackingStoreRhiConfig rhiConfig() const override { return { QPlatformBackingStoreRhiConfig::OpenGL }; }
 
@@ -586,6 +587,7 @@ public:
     QOpenGLPaintDevice *paintDevice = nullptr;
     int requestedSamples = 0;
     GLenum textureFormat = 0;
+    QColorSpace textureColorSpace = {}; // Default color space, i.e. no conversion.
     QSurfaceFormat requestedFormat = QSurfaceFormat::defaultFormat();
     QOpenGLWidget::UpdateBehavior updateBehavior = QOpenGLWidget::NoPartialUpdate;
     bool initialized = false;
@@ -680,6 +682,11 @@ QPlatformTextureList::Flags QOpenGLWidgetPrivate::textureListFlags()
         break;
     }
     return flags;
+}
+
+QColorSpace QOpenGLWidgetPrivate::colorSpace() const
+{
+    return textureColorSpace;
 }
 
 void QOpenGLWidgetPrivate::reset()
@@ -1277,6 +1284,42 @@ GLenum QOpenGLWidget::textureFormat() const
     Q_D(const QOpenGLWidget);
     return d->textureFormat;
 }
+
+/*!
+    \return the declared color space of the internal texture of the widget.
+
+    The texture's color space will be used when composing the widget
+    into the root window surface.
+
+    \note when the color space is set to QSurfaceFormat::DefaultColorSpace,
+    color conversion is effectively disabled.
+
+    \since 6.99
+ */
+QColorSpace QOpenGLWidget::textureColorSpace() const
+{
+    Q_D(const QOpenGLWidget);
+    return d->textureColorSpace;
+}
+
+/*!
+    Sets a custom color space for the internal texture of the widget
+
+    The color space of the texture will be compared against the color
+    space of the root surface and conversion will be performed if needed.
+
+    \note setting the color space to QSurfaceFormat::DefaultColorSpace will
+    effectively disable color conversion when composing this texture on
+    screen.
+
+    \since 6.99
+ */
+void QOpenGLWidget::setTextureColorSpace(const QColorSpace &colorSpace)
+{
+    Q_D(QOpenGLWidget);
+    d->textureColorSpace = colorSpace;
+}
+
 
 /*!
   \return \e true if the widget and OpenGL resources, like the context, have
