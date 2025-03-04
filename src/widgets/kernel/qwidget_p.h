@@ -606,6 +606,7 @@ public:
             ? QPlatformTextureList::StacksOnTop
             : QPlatformTextureList::Flags();
     }
+    virtual QColorSpace colorSpace() const { return {}; }
     virtual QImage grabFramebuffer() { return QImage(); }
     virtual void beginBackingStorePainting() { }
     virtual void endBackingStorePainting() { }
