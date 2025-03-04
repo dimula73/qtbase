@@ -44,6 +44,21 @@ public:
                                              bool translucentBackground);
 
 private:
+    enum class PipelineBlend {
+        None,
+        Alpha,
+        PremulAlpha
+    };
+
+    enum class ConversionDirection : size_t {
+        None = 0,
+        sRgb_to_scRGB,
+        sRgb_to_bt2020pq,
+        scRgb_to_sRGB,
+        scRgb_to_bt2020pq
+    };
+    static constexpr qsizetype numConversionDirections = 5; // keep in sync with ConversionDirection
+
     enum UpdateUniformOption {
         NeedsRedBlueSwap = 1 << 0,
         NeedsAlphaRotate = 1 << 1
@@ -54,7 +69,14 @@ private:
     };
     Q_DECLARE_FLAGS(UpdateQuadDataOptions, UpdateQuadDataOption)
 
-    void ensureResources(QRhiResourceUpdateBatch *resourceUpdates, QRhiRenderPassDescriptor *rpDesc);
+    QBackingStoreDefaultCompositor::ConversionDirection
+    directionForColorSpaces(const QColorSpace &src, const QColorSpace &dst);
+    QRhiGraphicsPipeline *createGraphicsPipeline(QRhi *rhi, QRhiShaderResourceBindings *srb,
+                                                 QRhiRenderPassDescriptor *rpDesc,
+                                                 PipelineBlend blend,
+                                                 ConversionDirection conversionDirection);
+    void ensureResources(QRhiResourceUpdateBatch *resourceUpdates,
+                         QRhiRenderPassDescriptor *rpDesc);
     QRhiTexture *toTexture(const QImage &image,
                            QRhi *rhi,
                            QRhiResourceUpdateBatch *resourceUpdates,
@@ -67,9 +89,9 @@ private:
     std::unique_ptr<QRhiBuffer> m_vbuf;
     std::unique_ptr<QRhiSampler> m_samplerNearest;
     std::unique_ptr<QRhiSampler> m_samplerLinear;
-    std::unique_ptr<QRhiGraphicsPipeline> m_psNoBlend;
-    std::unique_ptr<QRhiGraphicsPipeline> m_psBlend;
-    std::unique_ptr<QRhiGraphicsPipeline> m_psPremulBlend;
+    QVarLengthArray<std::unique_ptr<QRhiGraphicsPipeline>, numConversionDirections> m_psNoBlend;
+    QVarLengthArray<std::unique_ptr<QRhiGraphicsPipeline>, numConversionDirections> m_psBlend;
+    QVarLengthArray<std::unique_ptr<QRhiGraphicsPipeline>, numConversionDirections> m_psPremulBlend;
 
     struct PerQuadData {
         QRhiBuffer *ubuf = nullptr;

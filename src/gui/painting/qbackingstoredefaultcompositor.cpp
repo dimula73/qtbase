@@ -18,9 +18,9 @@ QBackingStoreDefaultCompositor::~QBackingStoreDefaultCompositor()
 void QBackingStoreDefaultCompositor::reset()
 {
     m_rhi = nullptr;
-    m_psNoBlend.reset();
-    m_psBlend.reset();
-    m_psPremulBlend.reset();
+    m_psNoBlend.clear();
+    m_psBlend.clear();
+    m_psPremulBlend.clear();
     m_samplerNearest.reset();
     m_samplerLinear.reset();
     m_vbuf.reset();
@@ -267,16 +267,32 @@ static void updateMatrix3x3(QRhiResourceUpdateBatch *resourceUpdates, QRhiBuffer
     resourceUpdates->updateDynamicBuffer(ubuf, 64, 48, f);
 }
 
-enum class PipelineBlend {
-    None,
-    Alpha,
-    PremulAlpha
-};
+QBackingStoreDefaultCompositor::ConversionDirection
+QBackingStoreDefaultCompositor::directionForColorSpaces(const QColorSpace &src,
+                                                        const QColorSpace &dst)
+{
+    if (!src.isValid() || !dst.isValid()) {
+        return ConversionDirection::None;
+    }
 
-static QRhiGraphicsPipeline *createGraphicsPipeline(QRhi *rhi,
-                                                    QRhiShaderResourceBindings *srb,
-                                                    QRhiRenderPassDescriptor *rpDesc,
-                                                    PipelineBlend blend)
+    if (src == QColorSpace::SRgb && dst == QColorSpace::SRgbLinear) {
+        return ConversionDirection::sRgb_to_scRGB;
+    } else if (src == QColorSpace::SRgb && dst == QColorSpace::Bt2100Pq) {
+        return ConversionDirection::sRgb_to_bt2020pq;
+    } else if (src == QColorSpace::SRgbLinear && dst == QColorSpace::SRgb) {
+        return ConversionDirection::scRgb_to_sRGB;
+    } else if (src == QColorSpace::SRgbLinear && dst == QColorSpace::Bt2100Pq) {
+        return ConversionDirection::scRgb_to_bt2020pq;
+    }
+
+    qWarning() << "QBackingStoreDefaultCompositor: unknown combination of color spaces" 
+                   << src << "->" << dst;
+    return ConversionDirection::None;
+}
+
+QRhiGraphicsPipeline *QBackingStoreDefaultCompositor::createGraphicsPipeline(
+        QRhi *rhi, QRhiShaderResourceBindings *srb, QRhiRenderPassDescriptor *rpDesc,
+        PipelineBlend blend, ConversionDirection conversionDirection)
 {
     QRhiGraphicsPipeline *ps = rhi->newGraphicsPipeline();
 
@@ -307,9 +323,29 @@ static QRhiGraphicsPipeline *createGraphicsPipeline(QRhi *rhi,
         break;
     }
 
+    QLatin1String fragmentShaderName;
+
+    switch (conversionDirection) {
+    case ConversionDirection::None:
+        fragmentShaderName = ":/qt-project.org/gui/painting/shaders/backingstorecompose.frag.qsb"_L1;
+        break;
+    case ConversionDirection::sRgb_to_scRGB:
+        fragmentShaderName = ":/qt-project.org/gui/painting/shaders/backingstorecompose_cs_srgb_to_scrgb.frag.qsb"_L1;
+        break;
+    case ConversionDirection::sRgb_to_bt2020pq:
+        fragmentShaderName = ":/qt-project.org/gui/painting/shaders/backingstorecompose_cs_srgb_to_bt2020pq.frag.qsb"_L1;
+        break;
+    case ConversionDirection::scRgb_to_sRGB:
+        fragmentShaderName = ":/qt-project.org/gui/painting/shaders/backingstorecompose_cs_scrgb_to_srgb.frag.qsb"_L1;
+        break;
+    case ConversionDirection::scRgb_to_bt2020pq:
+        fragmentShaderName = ":/qt-project.org/gui/painting/shaders/backingstorecompose_cs_scrgb_to_bt2020pq.frag.qsb"_L1;
+        break;
+    }
+
     ps->setShaderStages({
         { QRhiShaderStage::Vertex, getShader(":/qt-project.org/gui/painting/shaders/backingstorecompose.vert.qsb"_L1) },
-        { QRhiShaderStage::Fragment, getShader(":/qt-project.org/gui/painting/shaders/backingstorecompose.frag.qsb"_L1) }
+        { QRhiShaderStage::Fragment, getShader(fragmentShaderName) }
     });
     QRhiVertexInputLayout inputLayout;
     inputLayout.setBindings({ { 5 * sizeof(float) } });
@@ -444,12 +480,25 @@ void QBackingStoreDefaultCompositor::ensureResources(QRhiResourceUpdateBatch *re
         m_widgetQuadData = createPerQuadData(m_texture.get());
 
     QRhiShaderResourceBindings *srb = m_widgetQuadData.srb; // just for the layout
-    if (!m_psNoBlend)
-        m_psNoBlend.reset(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::None));
-    if (!m_psBlend)
-        m_psBlend.reset(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::Alpha));
-    if (!m_psPremulBlend)
-        m_psPremulBlend.reset(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::PremulAlpha));
+    if (m_psNoBlend.empty()) {
+        for (qsizetype i = 0; i < numConversionDirections; ++i) {
+            m_psNoBlend.emplace_back(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::None,
+                                                            static_cast<ConversionDirection>(i)));
+        }
+    }
+    if (m_psBlend.empty()) {
+        for (qsizetype i = 0; i < numConversionDirections; ++i) {
+            m_psBlend.emplace_back(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::Alpha,
+                                                          static_cast<ConversionDirection>(i)));
+        }
+    }
+    if (m_psPremulBlend.empty()) {
+        for (qsizetype i = 0; i < numConversionDirections; ++i) {
+            m_psPremulBlend.emplace_back(
+                    createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::PremulAlpha,
+                                           static_cast<ConversionDirection>(i)));
+        }
+    }
 }
 
 QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatformBackingStore *backingStore,
@@ -611,7 +660,7 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
 
         cb->beginPass(target, clearColor, { 1.0f, 0 });
 
-        cb->setGraphicsPipeline(m_psNoBlend.get());
+        cb->setGraphicsPipeline(m_psNoBlend[static_cast<qsizetype>(ConversionDirection::None)].get());
         cb->setViewport({ 0, 0, float(outputSizeInPixels.width()), float(outputSizeInPixels.height()) });
         QRhiCommandBuffer::VertexInput vbufBinding(m_vbuf.get(), 0);
         cb->setVertexInput(0, 1, &vbufBinding);
@@ -625,13 +674,21 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
                     if (buffer == QRhiSwapChain::RightBuffer && m_textureQuadData[i].srbExtra)
                         srb = m_textureQuadData[i].srbExtra;
 
+                    const qsizetype pipelineIndex = static_cast<qsizetype>(
+                        directionForColorSpaces(textures->colorSpace(i), window->format().colorSpace()));
+                    cb->setGraphicsPipeline(m_psNoBlend[pipelineIndex].get());
                     cb->setShaderResources(srb);
                     cb->draw(6);
                 }
             }
         }
 
-        cb->setGraphicsPipeline(premultiplied ? m_psPremulBlend.get() : m_psBlend.get());
+        {
+            const qsizetype pipelineIndex = static_cast<qsizetype>(
+                    directionForColorSpaces(QColorSpace::SRgb, window->format().colorSpace()));
+            cb->setGraphicsPipeline(premultiplied ? m_psPremulBlend[pipelineIndex].get()
+                                                  : m_psBlend[pipelineIndex].get());
+        }
 
         // Backingstore texture with the normal widgets.
         if (m_texture) {
@@ -644,10 +701,12 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
             const QPlatformTextureList::Flags flags = textures->flags(i);
             if (flags.testFlag(QPlatformTextureList::StacksOnTop)) {
                 if (m_textureQuadData[i].isValid()) {
+                    const qsizetype pipelineIndex = static_cast<qsizetype>(
+                        directionForColorSpaces(textures->colorSpace(i), window->format().colorSpace()));
                     if (flags.testFlag(QPlatformTextureList::NeedsPremultipliedAlphaBlending))
-                        cb->setGraphicsPipeline(m_psPremulBlend.get());
+                        cb->setGraphicsPipeline(m_psPremulBlend[pipelineIndex].get());
                     else
-                        cb->setGraphicsPipeline(m_psBlend.get());
+                        cb->setGraphicsPipeline(m_psBlend[pipelineIndex].get());
 
                     QRhiShaderResourceBindings* srb = m_textureQuadData[i].srb;
                     if (buffer == QRhiSwapChain::RightBuffer && m_textureQuadData[i].srbExtra)

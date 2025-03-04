@@ -188,7 +188,7 @@ QPlatformBackingStore::FlushResult QOpenGLCompositorBackingStore::rhiFlush(QWind
     m_textures->clear();
     for (int i = 0; i < textures->count(); ++i) {
         m_textures->appendTexture(textures->source(i), textures->texture(i), textures->geometry(i),
-                                  textures->clipRect(i), textures->flags(i));
+                                  textures->clipRect(i), textures->flags(i), textures->colorSpace(i));
     }
 
     updateTexture();

@@ -340,6 +340,10 @@ qt_internal_add_resource(Gui "gui_shaders"
     FILES
         "painting/shaders/backingstorecompose.vert.qsb"
         "painting/shaders/backingstorecompose.frag.qsb"
+        "painting/shaders/backingstorecompose_cs_srgb_to_scrgb.frag.qsb"
+        "painting/shaders/backingstorecompose_cs_srgb_to_bt2020pq.frag.qsb"
+        "painting/shaders/backingstorecompose_cs_scrgb_to_srgb.frag.qsb"
+        "painting/shaders/backingstorecompose_cs_scrgb_to_bt2020pq.frag.qsb"
 )
 
 if(QT_FEATURE_reduce_relocations AND UNIX AND GCC)
