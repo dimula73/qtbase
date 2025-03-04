@@ -46,6 +46,7 @@ struct QBackingstoreTextureInfo
     QRect rect;
     QRect clipRect;
     QPlatformTextureList::Flags flags;
+    QColorSpace colorSpace;
 };
 
 Q_DECLARE_TYPEINFO(QBackingstoreTextureInfo, Q_RELOCATABLE_TYPE);
@@ -101,6 +102,12 @@ QPlatformTextureList::Flags QPlatformTextureList::flags(int index) const
     return d->textures.at(index).flags;
 }
 
+QColorSpace QPlatformTextureList::colorSpace(int index) const
+{
+    Q_D(const QPlatformTextureList);
+    return d->textures.at(index).colorSpace;
+}
+
 QRect QPlatformTextureList::geometry(int index) const
 {
     Q_D(const QPlatformTextureList);
@@ -129,7 +136,8 @@ bool QPlatformTextureList::isLocked() const
 }
 
 void QPlatformTextureList::appendTexture(void *source, QRhiTexture *texture, const QRect &geometry,
-                                         const QRect &clipRect, Flags flags)
+                                         const QRect &clipRect, Flags flags,
+                                         QColorSpace colorSpace)
 {
     Q_D(QPlatformTextureList);
     QBackingstoreTextureInfo bi;
@@ -139,11 +147,13 @@ void QPlatformTextureList::appendTexture(void *source, QRhiTexture *texture, con
     bi.rect = geometry;
     bi.clipRect = clipRect;
     bi.flags = flags;
+    bi.colorSpace = colorSpace;
     d->textures.append(bi);
 }
 
 void QPlatformTextureList::appendTexture(void *source, QRhiTexture *textureLeft, QRhiTexture *textureRight, const QRect &geometry,
-                                         const QRect &clipRect, Flags flags)
+                                         const QRect &clipRect, Flags flags,
+                                         QColorSpace colorSpace)
 {
     Q_D(QPlatformTextureList);
 
@@ -154,6 +164,7 @@ void QPlatformTextureList::appendTexture(void *source, QRhiTexture *textureLeft,
     bi.rect = geometry;
     bi.clipRect = clipRect;
     bi.flags = flags;
+    bi.colorSpace = colorSpace;
     d->textures.append(bi);
 }
 
