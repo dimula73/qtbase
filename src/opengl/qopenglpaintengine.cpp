@@ -49,6 +49,10 @@
 #include <private/qopengl2pexvertexarray_p.h>
 #include <private/qopengltextureglyphcache_p.h>
 
+#if !QT_CONFIG(opengles2)
+#include <QOpenGLVersionFunctionsFactory>
+#endif
+
 #include <QDebug>
 
 #include <qtopengl_tracepoints_p.h>
@@ -676,13 +680,14 @@ void QOpenGL2PaintEngineEx::beginNativePainting()
     for (int i = 0; i < QT_GL_VERTEX_ARRAY_TRACKED_COUNT; ++i)
         d->funcs.glDisableVertexAttribArray(i);
 
-#if !QT_CONFIG(opengles2) && !defined(QT_OPENGL_DYNAMIC)
+#if !QT_CONFIG(opengles2)
     Q_ASSERT(QOpenGLContext::currentContext());
     const QOpenGLContext *ctx = d->ctx;
     const QSurfaceFormat &fmt = d->device->context()->format();
-    if (fmt.majorVersion() < 3 || (fmt.majorVersion() == 3 && fmt.minorVersion() < 1)
-        || (fmt.majorVersion() == 3 && fmt.minorVersion() == 1 && ctx->hasExtension(QByteArrayLiteral("GL_ARB_compatibility")))
-        || fmt.profile() == QSurfaceFormat::CompatibilityProfile)
+    if (!ctx->isOpenGLES() &&
+        (fmt.majorVersion() < 3 || (fmt.majorVersion() == 3 && fmt.minorVersion() < 1)
+         || (fmt.majorVersion() == 3 && fmt.minorVersion() == 1 && ctx->hasExtension(QByteArrayLiteral("GL_ARB_compatibility")))
+         || fmt.profile() == QSurfaceFormat::CompatibilityProfile))
     {
         // be nice to people who mix OpenGL 1.x code with QPainter commands
         // by setting modelview and projection matrices to mirror the GL 1
@@ -699,12 +704,16 @@ void QOpenGL2PaintEngineEx::beginNativePainting()
 
         const QSize sz = d->device->size();
 
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0, sz.width(), sz.height(), 0, -999999, 999999);
+        if (!d->legacyFuncs) {
+            d->legacyFuncs = QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_2_1>();
+        }
 
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixf(&mv_matrix[0][0]);
+        d->legacyFuncs->glMatrixMode(GL_PROJECTION);
+        d->legacyFuncs->glLoadIdentity();
+        d->legacyFuncs->glOrtho(0, sz.width(), sz.height(), 0, -999999, 999999);
+
+        d->legacyFuncs->glMatrixMode(GL_MODELVIEW);
+        d->legacyFuncs->glLoadMatrixf(&mv_matrix[0][0]);
     }
 #endif // !QT_CONFIG(opengles2)
 
