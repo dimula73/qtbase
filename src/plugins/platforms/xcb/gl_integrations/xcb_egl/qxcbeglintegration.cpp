@@ -149,6 +149,11 @@ bool QXcbEglIntegration::canCreatePlatformOffscreenSurface() const
     return true;
 }
 
+QOpenGLContext::OpenGLModuleType QXcbEglIntegration::openGLModuleType()
+{
+    return QOpenGLContext::LibGLES;
+}
+
 xcb_visualid_t QXcbEglIntegration::getCompatibleVisualId(xcb_screen_t *screen, EGLConfig config) const
 {
     xcb_visualid_t visualId = 0;

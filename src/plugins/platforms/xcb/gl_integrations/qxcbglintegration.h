@@ -36,6 +36,7 @@ public:
     virtual bool canCreatePlatformOffscreenSurface() const { return false; }
 
     virtual QXcbNativeInterfaceHandler *nativeInterfaceHandler() const  { return nullptr; }
+    virtual QOpenGLContext::OpenGLModuleType openGLModuleType() = 0;
 };
 
 QT_END_NAMESPACE
