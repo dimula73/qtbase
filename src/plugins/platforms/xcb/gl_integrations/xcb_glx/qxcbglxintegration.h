@@ -25,6 +25,7 @@ public:
     QPlatformOffscreenSurface *createPlatformOffscreenSurface(QOffscreenSurface *surface) const override;
     bool canCreatePlatformOffscreenSurface() const override;
     QOpenGLContext *createOpenGLContext(GLXContext context, void *visualInfo, QOpenGLContext *shareContext) const override;
+    QOpenGLContext::OpenGLModuleType openGLModuleType() override;
 
     bool supportsThreadedOpenGL() const override;
     bool supportsSwitchableWidgetComposition() const override;
