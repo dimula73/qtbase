@@ -108,7 +108,7 @@ if(QT_FEATURE_vulkan)
         OpenGL WrapVulkanHeaders::WrapVulkanHeaders)
 endif()
 
-qt_internal_extend_target(OpenGL CONDITION QT_FEATURE_egl
+qt_internal_extend_target(OpenGL CONDITION QT_FEATURE_eglfs
     SOURCES
         qopenglcompositor.cpp qopenglcompositor_p.h
         qopenglcompositorbackingstore.cpp qopenglcompositorbackingstore_p.h
