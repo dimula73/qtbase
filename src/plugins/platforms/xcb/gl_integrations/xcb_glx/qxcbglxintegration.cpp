@@ -198,6 +198,11 @@ bool QXcbGlxIntegration::canCreatePlatformOffscreenSurface() const {
     return glxPbufferUsable;
 }
 
+QOpenGLContext::OpenGLModuleType QXcbGlxIntegration::openGLModuleType()
+{
+    return QOpenGLContext::LibGL;
+}
+
 bool QXcbGlxIntegration::supportsThreadedOpenGL() const
 {
     return QGLXContext::supportsThreading();

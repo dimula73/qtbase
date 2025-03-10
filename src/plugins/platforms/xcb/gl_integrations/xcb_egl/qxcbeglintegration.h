@@ -35,6 +35,7 @@ public:
     QOpenGLContext *createOpenGLContext(EGLContext context, EGLDisplay display, QOpenGLContext *shareContext) const override;
     QPlatformOffscreenSurface *createPlatformOffscreenSurface(QOffscreenSurface *surface) const override;
     bool canCreatePlatformOffscreenSurface() const override;
+    QOpenGLContext::OpenGLModuleType openGLModuleType() override;
 
     bool supportsThreadedOpenGL() const override { return true; }
 
