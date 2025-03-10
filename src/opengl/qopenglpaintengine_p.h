@@ -28,6 +28,10 @@
 
 #include <private/qopenglextensions_p.h>
 
+#if !QT_CONFIG(opengles2)
+#include <QOpenGLFunctions_2_1>
+#endif
+
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLBuffer>
 
@@ -149,6 +153,9 @@ public:
     };
 
     QOpenGL2PaintEngineExPrivate(QOpenGL2PaintEngineEx *q_ptr) :
+#if !QT_CONFIG(opengles2)
+            legacyFuncs(nullptr),
+#endif
             q(q_ptr),
             shaderManager(nullptr),
             width(0), height(0),
@@ -238,6 +245,9 @@ public:
     static void cleanupVectorPath(QPaintEngineEx *engine, void *data);
 
     QOpenGLExtensions funcs;
+#if !QT_CONFIG(opengles2)
+    QOpenGLFunctions_2_1 *legacyFuncs;
+#endif
 
     QOpenGL2PaintEngineEx* q;
     QOpenGLEngineShaderManager* shaderManager;
