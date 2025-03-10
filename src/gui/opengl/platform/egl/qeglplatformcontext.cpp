@@ -419,7 +419,7 @@ QFunctionPointer QEGLPlatformContext::getProcAddress(const char *procName)
 #if !defined(Q_OS_WIN) && !defined(Q_OS_INTEGRITY)
     if (!proc)
         proc = (QFunctionPointer) dlsym(RTLD_DEFAULT, procName);
-#elif !defined(QT_OPENGL_DYNAMIC)
+#elif QT_CONFIG(opengles2)
     // On systems without KHR_get_all_proc_addresses and without
     // dynamic linking there still has to be a way to access the
     // standard GLES functions. QOpenGL(Extra)Functions never makes
