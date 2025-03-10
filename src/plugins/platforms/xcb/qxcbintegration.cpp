@@ -267,6 +267,16 @@ QOpenGLContext *QXcbIntegration::createOpenGLContext(EGLContext context, EGLDisp
 }
 #endif
 
+QOpenGLContext::OpenGLModuleType QXcbIntegration::openGLModuleType()
+{
+    QXcbGlIntegration *glIntegration = m_connection->glIntegration();
+    if (!glIntegration) {
+        qWarning("QXcbIntegration: Cannot fetch openGL module type, neither GLX nor EGL are enabled");
+        return QOpenGLContext::LibGL;
+    }
+    return glIntegration->openGLModuleType();
+}
+
 #endif // QT_NO_OPENGL
 
 QPlatformBackingStore *QXcbIntegration::createPlatformBackingStore(QWindow *window) const

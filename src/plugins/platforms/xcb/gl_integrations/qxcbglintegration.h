@@ -34,6 +34,7 @@ public:
     virtual QPlatformOffscreenSurface *createPlatformOffscreenSurface(QOffscreenSurface *surface) const = 0;
 
     virtual QXcbNativeInterfaceHandler *nativeInterfaceHandler() const  { return nullptr; }
+    virtual QOpenGLContext::OpenGLModuleType openGLModuleType() = 0;
 };
 
 QT_END_NAMESPACE
