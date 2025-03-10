@@ -44,6 +44,7 @@ public:
 # if QT_CONFIG(egl)
     QOpenGLContext *createOpenGLContext(EGLContext context, EGLDisplay display, QOpenGLContext *shareContext) const override;
 # endif
+    QOpenGLContext::OpenGLModuleType openGLModuleType() override;
 #endif
     QPlatformBackingStore *createPlatformBackingStore(QWindow *window) const override;
 

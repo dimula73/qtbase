@@ -576,7 +576,12 @@ void QPlatformIntegration::quit() const
 QOpenGLContext::OpenGLModuleType QPlatformIntegration::openGLModuleType()
 {
     qWarning("This plugin does not support dynamic OpenGL loading!");
+
+#if QT_CONFIG(opengles2)
+    return QOpenGLContext::LibGLES;
+#else
     return QOpenGLContext::LibGL;
+#endif
 }
 #endif
 
