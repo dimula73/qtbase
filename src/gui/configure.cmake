@@ -804,7 +804,7 @@ qt_feature("opengl-desktop"
     LABEL "Desktop OpenGL"
     AUTODETECT NOT WIN32
     CONDITION ( WIN32 AND ( MSVC OR WrapOpenGL_FOUND ) ) OR ( NOT WATCHOS AND NOT WIN32 AND NOT WASM AND WrapOpenGL_FOUND )
-    ENABLE INPUT_opengl STREQUAL 'desktop'
+    ENABLE INPUT_opengl STREQUAL 'desktop' OR INPUT_opengl STREQUAL 'yes'
     DISABLE INPUT_opengl STREQUAL 'es2' OR INPUT_opengl STREQUAL 'dynamic' OR INPUT_opengl STREQUAL 'no'
 )
 qt_feature("opengl-dynamic"
@@ -812,7 +812,6 @@ qt_feature("opengl-dynamic"
     CONDITION WIN32
     DISABLE INPUT_opengl STREQUAL 'no' OR INPUT_opengl STREQUAL 'desktop'
 )
-qt_feature_definition("opengl-dynamic" "QT_OPENGL_DYNAMIC")
 qt_feature("opengl" PUBLIC
     LABEL "OpenGL"
     CONDITION QT_FEATURE_opengl_desktop OR QT_FEATURE_opengl_dynamic OR QT_FEATURE_opengles2
@@ -1394,9 +1393,19 @@ qt_configure_add_report_entry(
     CONDITION QT_FEATURE_gui AND LINUX AND NOT ANDROID AND NOT QT_FEATURE_xcb AND NOT QT_FEATURE_eglfs AND NOT QT_FEATURE_directfb AND NOT QT_FEATURE_linuxfb
 )
 qt_configure_add_report_entry(
+    TYPE WARNING
+    MESSAGE "-DFEATURE_opengl_desktop is deprecated on Windows, linking happens on the runtime all the time. Please use -DFEATURE_opengl=on instead."
+    CONDITION QT_FEATURE_opengl_desktop AND WIN32
+)
+qt_configure_add_report_entry(
+    TYPE WARNING
+    MESSAGE "-DFEATURE_opengl_dynamic is deprecated, linking happens on the runtime unconditonally. Please use -DFEATURE_opengl=on instead."
+    CONDITION QT_FEATURE_opengl_dynamic
+)
+qt_configure_add_report_entry(
     TYPE ERROR
     MESSAGE "The OpenGL functionality tests failed! You might need to modify the OpenGL package search path by setting the OpenGL_DIR CMake variable to the OpenGL library's installation directory."
-    CONDITION QT_FEATURE_gui AND NOT WATCHOS AND NOT VISIONOS AND ( NOT INPUT_opengl STREQUAL 'no' ) AND NOT QT_FEATURE_opengl_desktop AND NOT QT_FEATURE_opengles2 AND NOT QT_FEATURE_opengl_dynamic
+    CONDITION QT_FEATURE_gui AND NOT WATCHOS AND NOT VISIONOS AND ( NOT INPUT_opengl STREQUAL 'no' ) AND NOT QT_FEATURE_opengl
 )
 qt_configure_add_report_entry(
     TYPE WARNING

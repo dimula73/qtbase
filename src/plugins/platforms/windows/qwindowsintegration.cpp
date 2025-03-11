@@ -368,7 +368,6 @@ QWindowsWindow *QWindowsIntegration::createPlatformWindowHelper(QWindow *window,
 
 QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
 {
-#if defined(QT_OPENGL_DYNAMIC) || QT_CONFIG(egl)
     QWindowsOpenGLTester::Renderer requestedRenderer = QWindowsOpenGLTester::requestedRenderer();
     switch (requestedRenderer) {
     case QWindowsOpenGLTester::DesktopGl:
@@ -381,7 +380,7 @@ QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
         }
         qCWarning(lcQpaGl, "System OpenGL failed. Falling back to Software OpenGL.");
         return QOpenGLStaticContext::create(true);
-#    if QT_CONFIG(egl)
+#if QT_CONFIG(egl)
     // If ANGLE is requested, use it, don't try anything else.
     case QWindowsOpenGLTester::AngleRendererD3d9:
     case QWindowsOpenGLTester::AngleRendererD3d11:
@@ -391,7 +390,7 @@ QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
         return QWindowsEGLStaticContext::create(requestedRenderer);
     case QWindowsOpenGLTester::Gles:
         return QWindowsEGLStaticContext::create(requestedRenderer);
-#    endif
+#endif
     case QWindowsOpenGLTester::SoftwareRasterizer:
         if (QWindowsStaticOpenGLContext *swCtx = QOpenGLStaticContext::create(true))
             return swCtx;
@@ -417,17 +416,14 @@ QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
             return glCtx;
         }
     }
-#    if QT_CONFIG(egl)
+#if QT_CONFIG(egl)
     if (QWindowsOpenGLTester::Renderers glesRenderers =
                 supportedRenderers & QWindowsOpenGLTester::GlesMask) {
         if (QWindowsEGLStaticContext *eglCtx = QWindowsEGLStaticContext::create(glesRenderers))
             return eglCtx;
     }
-#    endif
-    return QOpenGLStaticContext::create(true);
-#else
-    return QOpenGLStaticContext::create();
 #endif
+    return QOpenGLStaticContext::create(true);
 }
 
 QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::create()
@@ -448,13 +444,9 @@ QPlatformOpenGLContext *QWindowsIntegration::createPlatformOpenGLContext(QOpenGL
 
 QOpenGLContext::OpenGLModuleType QWindowsIntegration::openGLModuleType()
 {
-#if !defined(QT_OPENGL_DYNAMIC)
-    return QOpenGLContext::LibGL;
-#else
     if (const QWindowsStaticOpenGLContext *staticOpenGLContext = QWindowsIntegration::staticOpenGLContext())
         return staticOpenGLContext->moduleType();
     return QOpenGLContext::LibGL;
-#endif
 }
 
 HMODULE QWindowsIntegration::openGLModuleHandle() const

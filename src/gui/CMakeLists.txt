@@ -374,7 +374,7 @@ if(QT_FEATURE_opengl)
             )
         endif()
 
-    elseif(NOT QT_FEATURE_opengl_dynamic)
+    elseif(NOT WIN32) # we don't need direct linking of desktopGL on Windows
         target_link_libraries(Gui PUBLIC WrapOpenGL::WrapOpenGL)
     endif()
 endif()

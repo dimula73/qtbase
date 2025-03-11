@@ -99,11 +99,6 @@ qt_internal_add_resource(QWindowsDirect2DIntegrationPlugin "openglblacklists"
 ## Scopes:
 #####################################################################
 
-qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION QT_FEATURE_opengl AND NOT QT_FEATURE_opengl_dynamic
-    LIBRARIES
-        opengl32
-)
-
 qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION MINGW
     LIBRARIES
         uuid

@@ -910,13 +910,11 @@ QScreen *QOpenGLContext::screen() const
  */
 QOpenGLContext::OpenGLModuleType QOpenGLContext::openGLModuleType()
 {
-#if defined(QT_OPENGL_DYNAMIC)
-    Q_ASSERT(qGuiApp);
-    return QGuiApplicationPrivate::instance()->platformIntegration()->openGLModuleType();
-#elif QT_CONFIG(opengles2)
+#if QT_CONFIG(opengles2)
     return LibGLES;
 #else
-    return LibGL;
+    Q_ASSERT(qGuiApp);
+    return QGuiApplicationPrivate::instance()->platformIntegration()->openGLModuleType();
 #endif
 }
 

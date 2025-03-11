@@ -155,9 +155,6 @@ void tst_QOpenGlConfig::testConfiguration()
 static void dumpGlConfiguration(QOpenGLContext &context, QTextStream &str)
 {
     str << "Type             : ";
-#ifdef QT_OPENGL_DYNAMIC
-    str << "Dynamic GL ";
-#endif
     switch (context.openGLModuleType()) {
     case QOpenGLContext::LibGL:
         str << "LibGL";

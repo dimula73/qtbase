@@ -930,7 +930,7 @@ QOpenGLTemporaryContext::~QOpenGLTemporaryContext()
 
     No WGL or OpenGL functions are called directly from the windows plugin. Instead, the
     static context loads opengl32.dll and resolves the necessary functions. This allows
-    building the plugin without linking to opengl32 and enables QT_OPENGL_DYNAMIC builds
+    building the plugin without linking to opengl32 and enables dynamic builds
     where both the EGL and WGL (this) based implementation of the context are built.
 
     \note Initialization requires an active context (see create()).
@@ -1339,7 +1339,7 @@ QFunctionPointer QWindowsGLContext::getProcAddress(const char *procName)
     // We support AllGLFunctionsQueryable, which means this function must be able to
     // return a function pointer even for functions that are in GL.h and exported
     // normally from opengl32.dll. wglGetProcAddress() is not guaranteed to work for such
-    // functions, however in QT_OPENGL_DYNAMIC builds QOpenGLFunctions will just blindly
+    // functions, however in dynamic builds QOpenGLFunctions will just blindly
     // call into here for _any_ OpenGL function.
     if (procAddress == nullptr || reinterpret_cast<quintptr>(procAddress) < 4u
         || procAddress == reinterpret_cast<QFunctionPointer>(-1)) {
