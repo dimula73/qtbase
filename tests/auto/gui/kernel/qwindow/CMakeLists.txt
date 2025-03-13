@@ -46,7 +46,7 @@ endif()
 ## Scopes:
 #####################################################################
 
-qt_internal_extend_target(tst_qwindow CONDITION QT_FEATURE_dynamicgl AND WIN32
+qt_internal_extend_target(tst_qwindow CONDITION QT_FEATURE_opengl_dynamic AND WIN32
     LIBRARIES
         user32
 )

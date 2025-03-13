@@ -21,7 +21,6 @@ public:
     virtual ~QWindowsStaticOpenGLContext() = default;
 
     virtual QWindowsOpenGLContext *createContext(QOpenGLContext *context) = 0;
-    virtual QWindowsOpenGLContext *createContext(HGLRC context, HWND window) = 0;
     virtual void *moduleHandle() const = 0;
     virtual QOpenGLContext::OpenGLModuleType moduleType() const = 0;
     virtual bool supportsThreadedOpenGL() const { return false; }
@@ -41,12 +40,6 @@ private:
 class QWindowsOpenGLContext : public QPlatformOpenGLContext
 {
     Q_DISABLE_COPY_MOVE(QWindowsOpenGLContext)
-public:
-    // These should be implemented only for some winsys interfaces, for example EGL.
-    // For others, like WGL, they are not relevant.
-    virtual void *nativeDisplay() const { return nullptr; }
-    virtual void *nativeConfig() const { return 0; }
-
 protected:
     QWindowsOpenGLContext() = default;
 };
