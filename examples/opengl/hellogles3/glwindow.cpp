@@ -141,6 +141,16 @@ void GLWindow::initializeGL()
 {
     QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
 
+    const char *vendor = reinterpret_cast<const char *>(f->glGetString(GL_VENDOR));
+    const char *renderer = reinterpret_cast<const char *>(f->glGetString(GL_RENDERER));
+    const char *version = reinterpret_cast<const char *>(f->glGetString(GL_VERSION));
+    const char *shadingLanguageVersion = reinterpret_cast<const char *>(f->glGetString(GL_SHADING_LANGUAGE_VERSION));
+    
+    qDebug() << "GL_VENDOR:" << vendor;
+    qDebug() << "GL_RENDERER:" << renderer;
+    qDebug() << "GL_VERSION:" << version;
+    qDebug() << "GL_SHADING_LANGUAGE_VERSION:" << shadingLanguageVersion;
+
     QImage img(":/qtlogo.png");
     Q_ASSERT(!img.isNull());
     delete m_texture;
