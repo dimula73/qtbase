@@ -14,6 +14,11 @@ qt_add_executable(hellogles3
     main.cpp
 )
 
+if (WIN32)
+    target_sources(hellogles3 PUBLIC app.manifest)
+endif()
+
+
 set_target_properties(hellogles3 PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
