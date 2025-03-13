@@ -194,19 +194,49 @@ QVariant GpuDescription::toVariant() const
     return result;
 }
 
+QWindowsOpenGLTester::Renderer QWindowsOpenGLTester::requestedGlesRenderer()
+{
+#if QT_CONFIG(egl)
+    const char platformVar[] = "QT_ANGLE_PLATFORM";
+    if (qEnvironmentVariableIsSet(platformVar)) {
+        const QByteArray anglePlatform = qgetenv(platformVar);
+        if (anglePlatform == "opengl")
+            return QWindowsOpenGLTester::AngleRendererOpenGL;
+        if (anglePlatform == "d3d11on12")
+            return QWindowsOpenGLTester::AngleRendererD3d11On12;
+        if (anglePlatform == "d3d11")
+            return QWindowsOpenGLTester::AngleRendererD3d11;
+        if (anglePlatform == "d3d9")
+            return QWindowsOpenGLTester::AngleRendererD3d9;
+        if (anglePlatform == "warp")
+            return QWindowsOpenGLTester::AngleRendererD3d11Warp;
+        qCWarning(lcQpaGl) << "Invalid value set for " << platformVar << ": " << anglePlatform;
+    }
+#endif
+    return QWindowsOpenGLTester::InvalidRenderer;
+}
+
 QWindowsOpenGLTester::Renderer QWindowsOpenGLTester::requestedRenderer()
 {
     const char openGlVar[] = "QT_OPENGL";
-    if (QCoreApplication::testAttribute(Qt::AA_UseOpenGLES))
-        qWarning("Qt::AA_UseOpenGLES is no longer supported in Qt 6");
+#if QT_CONFIG(egl)
+    if (QCoreApplication::testAttribute(Qt::AA_UseOpenGLES)) {
+        const Renderer glesRenderer = QWindowsOpenGLTester::requestedGlesRenderer();
+        return glesRenderer != InvalidRenderer ? glesRenderer : Gles;
+    }
+#endif
     if (QCoreApplication::testAttribute(Qt::AA_UseDesktopOpenGL))
         return QWindowsOpenGLTester::DesktopGl;
     if (QCoreApplication::testAttribute(Qt::AA_UseSoftwareOpenGL))
         return QWindowsOpenGLTester::SoftwareRasterizer;
     if (qEnvironmentVariableIsSet(openGlVar)) {
         const QByteArray requested = qgetenv(openGlVar);
-        if (requested == "angle")
-            qWarning("QT_OPENGL=angle is no longer supported in Qt 6");
+#if QT_CONFIG(egl)
+        if (requested == "angle") {
+            const Renderer glesRenderer = QWindowsOpenGLTester::requestedGlesRenderer();
+            return glesRenderer != InvalidRenderer ? glesRenderer : Gles;
+        }
+#endif
         if (requested == "desktop")
             return QWindowsOpenGLTester::DesktopGl;
         if (requested == "software")
@@ -250,10 +280,22 @@ QWindowsOpenGLTester::Renderers QWindowsOpenGLTester::detectSupportedRenderers(c
     if (it != srCache->cend())
         return *it;
 
+#  if QT_CONFIG(egl)
+    QWindowsOpenGLTester::Renderers result(
+            QWindowsOpenGLTester::AngleRendererD3d11 | QWindowsOpenGLTester::AngleRendererD3d9
+            | QWindowsOpenGLTester::AngleRendererD3d11Warp
+            | QWindowsOpenGLTester::AngleRendererD3d11On12
+            | QWindowsOpenGLTester::AngleRendererOpenGL | QWindowsOpenGLTester::SoftwareRasterizer);
+#  else
     QWindowsOpenGLTester::Renderers result(QWindowsOpenGLTester::SoftwareRasterizer);
+#  endif
 
     // Don't test for GL if explicitly requested or GLES only is requested
+#  if QT_CONFIG(egl)
+    if (requested == DesktopGl || ((requested & GlesMask) == 0 && testDesktopGL()))
+#  else
     if (requested == DesktopGl || testDesktopGL())
+#  endif
         result |= QWindowsOpenGLTester::DesktopGl;
 
     QSet<QString> features; // empty by default -> nothing gets disabled
@@ -273,6 +315,25 @@ QWindowsOpenGLTester::Renderers QWindowsOpenGLTester::detectSupportedRenderers(c
         qCDebug(lcQpaGl) << "Disabling Desktop GL: " << gpu;
         result &= ~QWindowsOpenGLTester::DesktopGl;
     }
+#  if QT_CONFIG(egl)
+    if (features.contains(QStringLiteral("disable_angle"))) { // Qt-specific keyword
+        qCDebug(lcQpaGl) << "Disabling ANGLE: " << gpu;
+        result &= ~QWindowsOpenGLTester::GlesMask;
+    } else {
+        if (features.contains(QStringLiteral("disable_d3d11on12"))) { // standard keyword
+            qCDebug(lcQpaGl) << "Disabling D3D11 on 12: " << gpu;
+            result &= ~QWindowsOpenGLTester::AngleRendererD3d11On12;
+        }
+        if (features.contains(QStringLiteral("disable_d3d11"))) { // standard keyword
+            qCDebug(lcQpaGl) << "Disabling D3D11: " << gpu;
+            result &= ~QWindowsOpenGLTester::AngleRendererD3d11;
+        }
+        if (features.contains(QStringLiteral("disable_d3d9"))) { // Qt-specific
+            qCDebug(lcQpaGl) << "Disabling D3D9: " << gpu;
+            result &= ~QWindowsOpenGLTester::AngleRendererD3d9;
+        }
+    }
+#  endif
     if (features.contains(QStringLiteral("disable_rotation"))) {
         qCDebug(lcQpaGl) << "Disabling rotation: " << gpu;
         result |= DisableRotationFlag;

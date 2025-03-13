@@ -812,11 +812,6 @@ qt_feature("opengl-dynamic"
     CONDITION WIN32
     DISABLE INPUT_opengl STREQUAL 'no' OR INPUT_opengl STREQUAL 'desktop'
 )
-qt_feature("dynamicgl" PUBLIC
-    LABEL "Dynamic OpenGL: dynamicgl"
-    CONDITION QT_FEATURE_opengl_dynamic
-    DISABLE INPUT_opengl STREQUAL 'no' OR INPUT_opengl STREQUAL 'desktop'
-)
 qt_feature_definition("opengl-dynamic" "QT_OPENGL_DYNAMIC")
 qt_feature("opengl" PUBLIC
     LABEL "OpenGL"
@@ -849,6 +844,15 @@ qt_feature("egl" PUBLIC
     CONDITION ( QT_FEATURE_opengl OR QT_FEATURE_openvg ) AND EGL_FOUND AND ( QT_FEATURE_dlopen OR NOT UNIX OR INTEGRITY )
 )
 qt_feature_definition("egl" "QT_NO_EGL" NEGATE VALUE "1")
+
+# On all platforms except Windows we link to EGL directly. On
+# Windows we resolve all the functions manually
+# Do NOT change it manually
+qt_feature("egl-convenience-direct-linking" PRIVATE
+    LABEL "Direct linking to EGL in EGL-convenience classes"
+    PURPOSE "Allow direct linking to EGL library in EGL-convenience classes"
+    CONDITION QT_FEATURE_egl AND NOT WIN32
+)
 qt_feature("egl_x11" PRIVATE
     LABEL "EGL on X11"
     CONDITION QT_FEATURE_thread AND QT_FEATURE_egl AND TEST_egl_x11

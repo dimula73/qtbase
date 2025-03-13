@@ -25,6 +25,9 @@ class QWindowsStaticOpenGLContext;
 class QWindowsIntegration : public QPlatformIntegration
 #ifndef QT_NO_OPENGL
     , public QNativeInterface::Private::QWindowsGLIntegration
+#  if QT_CONFIG(egl)
+   , public QNativeInterface::Private::QEGLIntegration
+#  endif
 #endif
     , public QWindowsApplication
 {
@@ -62,6 +65,9 @@ public:
     HMODULE openGLModuleHandle() const override;
     QOpenGLContext *createOpenGLContext(HGLRC context, HWND window,
                                         QOpenGLContext *shareContext) const override;
+#  if QT_CONFIG(egl)
+    QOpenGLContext *createOpenGLContext(EGLContext context, EGLDisplay display, QOpenGLContext *shareContext) const override;
+#  endif
 #endif
     QAbstractEventDispatcher *createEventDispatcher() const override;
     void initialize() override;

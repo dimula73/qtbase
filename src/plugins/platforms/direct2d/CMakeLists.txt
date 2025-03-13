@@ -99,7 +99,7 @@ qt_internal_add_resource(QWindowsDirect2DIntegrationPlugin "openglblacklists"
 ## Scopes:
 #####################################################################
 
-qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION QT_FEATURE_opengl AND NOT QT_FEATURE_dynamicgl
+qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION QT_FEATURE_opengl AND NOT QT_FEATURE_opengl_dynamic
     LIBRARIES
         opengl32
 )
@@ -115,6 +115,13 @@ qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION QT_FEATURE
     SOURCES
         ../windows/qwindowsglcontext.cpp ../windows/qwindowsglcontext.h
         ../windows/qwindowsopenglcontext.h
+)
+
+qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION QT_FEATURE_egl
+    SOURCES
+        ../windows/qwindowseglcontext.cpp ../windows/qwindowseglcontext.h
+    LIBRARIES
+        EGL::EGL
 )
 
 qt_internal_extend_target(QWindowsDirect2DIntegrationPlugin CONDITION QT_FEATURE_systemtrayicon

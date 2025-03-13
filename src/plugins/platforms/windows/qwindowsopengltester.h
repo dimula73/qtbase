@@ -41,6 +41,14 @@ public:
     enum Renderer {
         InvalidRenderer         = 0x0000,
         DesktopGl               = 0x0001,
+        AngleRendererD3d11      = 0x0002,
+        AngleRendererD3d9       = 0x0004,
+        AngleRendererD3d11Warp  = 0x0008, // "Windows Advanced Rasterization Platform",
+        AngleRendererD3d11On12  = 0x0040,
+        AngleRendererOpenGL     = 0x0080,
+        AngleBackendMask        = AngleRendererD3d11 | AngleRendererD3d9 | AngleRendererD3d11Warp | AngleRendererD3d11On12 | AngleRendererOpenGL,
+        Gles                    = 0x0010, // ANGLE
+        GlesMask                = Gles | AngleBackendMask,
         SoftwareRasterizer      = 0x0020,
         RendererMask            = 0x00FF,
         DisableRotationFlag     = 0x0100,
@@ -48,6 +56,7 @@ public:
     };
     Q_DECLARE_FLAGS(Renderers, Renderer)
 
+    static Renderer requestedGlesRenderer();
     static Renderer requestedRenderer();
 
     static QWindowsOpenGLTester::Renderers  supportedRenderers(Renderer requested);

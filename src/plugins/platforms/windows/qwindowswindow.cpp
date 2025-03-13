@@ -13,7 +13,7 @@
 #include "qwindowsintegration.h"
 #include "qwindowsmenu.h"
 #include "qwindowsnativeinterface.h"
-#if QT_CONFIG(dynamicgl)
+#if defined(QT_OPENGL_DYNAMIC)
 #  include "qwindowsglcontext.h"
 #else
 #  include "qwindowsopenglcontext.h"
@@ -2383,12 +2383,12 @@ void QWindowsWindow::releaseDC()
 
 static inline bool isSoftwareGl()
 {
-#if QT_CONFIG(dynamicgl)
+#if defined(QT_OPENGL_DYNAMIC)
     return QOpenGLStaticContext::opengl32.moduleIsNotOpengl32()
         && QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL;
 #else
     return false;
-#endif // dynamicgl
+#endif // QT_OPENGL_DYNAMIC
 }
 
 bool QWindowsWindow::handleWmPaint(HWND hwnd, UINT message,

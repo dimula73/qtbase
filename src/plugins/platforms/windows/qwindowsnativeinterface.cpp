@@ -16,10 +16,19 @@
 #include <QtGui/qscreen.h>
 #include <qpa/qplatformscreen.h>
 
+#if QT_CONFIG(egl)
+#  include "qwindowseglcontext.h"
+#endif
+
 QT_BEGIN_NAMESPACE
 
 enum ResourceType {
     RenderingContextType,
+#if QT_CONFIG(egl)
+    EglContextType,
+    EglDisplayType,
+    EglConfigType,
+#endif
     HandleType,
     GlHandleType,
     GetDCType,
@@ -31,6 +40,11 @@ static int resourceType(const QByteArray &key)
 {
     static const char *names[] = { // match ResourceType
         "renderingcontext",
+#if QT_CONFIG(egl)
+        "eglcontext",
+        "egldisplay",
+        "eglconfig",
+#endif
         "handle",
         "glhandle",
         "getdc",
@@ -126,6 +140,23 @@ void *QWindowsNativeInterface::nativeResourceForContext(const QByteArray &resour
         qWarning("%s: '%s' requested for null context or context without handle.", __FUNCTION__, resource.constData());
         return nullptr;
     }
+
+#  if QT_CONFIG(egl)
+    auto *eglcontext = dynamic_cast<QWindowsEGLContext *>(context->handle());
+    if (eglcontext) {
+        switch (resourceType(resource)) {
+        case RenderingContextType: // Fall through.
+        case EglContextType:
+            return eglcontext->nativeContext();
+        case EglDisplayType:
+            return eglcontext->display();
+        case EglConfigType:
+            return eglcontext->config();
+        default:
+            break;
+        }
+    }
+#  endif
 
     qWarning("%s: Invalid key '%s' requested.", __FUNCTION__, resource.constData());
     return nullptr;

@@ -21,8 +21,23 @@
 
 #include <QtGui/private/qt_egl_p.h>
 
-
 QT_BEGIN_NAMESPACE
+
+class Q_GUI_EXPORT QEglConfigFunctions
+{
+public:
+    virtual ~QEglConfigFunctions();
+    virtual EGLBoolean eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list,
+                                       EGLConfig *configs, EGLint config_size,
+                                       EGLint *num_config) = 0;
+    virtual EGLBoolean eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute,
+                                          EGLint *value) = 0;
+    virtual const char * eglQueryString(EGLDisplay dpy, EGLint name) = 0;
+    virtual QFunctionPointer eglGetProcAddress(const char *procname) = 0;
+    virtual EGLint eglGetError() = 0;
+};
+
+Q_GUI_EXPORT QEglConfigFunctions* q_resolveEglConfigFunctions(QEglConfigFunctions *func);
 
 Q_GUI_EXPORT QList<EGLint> q_createConfigAttributesFromFormat(const QSurfaceFormat &format);
 
@@ -31,14 +46,16 @@ Q_GUI_EXPORT bool q_reduceConfigAttributes(QList<EGLint> *configAttributes);
 Q_GUI_EXPORT EGLConfig q_configFromGLFormat(EGLDisplay display,
                                                const QSurfaceFormat &format,
                                                bool highestPixelFormat = false,
-                                               int surfaceType = EGL_WINDOW_BIT);
+                                               int surfaceType = EGL_WINDOW_BIT,
+                                               QEglConfigFunctions *func = nullptr);
 
 Q_GUI_EXPORT QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config,
-                                                    const QSurfaceFormat &referenceFormat = {});
+                                                    const QSurfaceFormat &referenceFormat = {},
+                                                    QEglConfigFunctions *func = nullptr);
 
-Q_GUI_EXPORT bool q_hasEglExtension(EGLDisplay display,const char* extensionName);
+Q_GUI_EXPORT bool q_hasEglExtension(EGLDisplay display,const char* extensionName, QEglConfigFunctions *func = nullptr);
 
-Q_GUI_EXPORT void q_printEglConfig(EGLDisplay display, EGLConfig config);
+Q_GUI_EXPORT void q_printEglConfig(EGLDisplay display, EGLConfig config, QEglConfigFunctions *func = nullptr);
 
 #ifdef Q_OS_UNIX
 Q_GUI_EXPORT QSizeF q_physicalScreenSizeFromFb(int framebufferDevice,
@@ -55,7 +72,7 @@ Q_GUI_EXPORT  qreal q_refreshRateFromFb(int framebufferDevice);
 class Q_GUI_EXPORT QEglConfigChooser
 {
 public:
-    QEglConfigChooser(EGLDisplay display);
+    QEglConfigChooser(EGLDisplay display, QEglConfigFunctions *func = nullptr);
     virtual ~QEglConfigChooser();
 
     EGLDisplay display() const { return m_display; }
@@ -73,6 +90,8 @@ public:
 
 protected:
     virtual bool filterConfig(EGLConfig config) const;
+
+    QEglConfigFunctions *m_func = nullptr;
 
     QSurfaceFormat m_format;
     EGLDisplay m_display;

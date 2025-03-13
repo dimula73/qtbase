@@ -138,7 +138,7 @@ public:
     static QByteArray getGlString(unsigned int which);
 
     QWindowsOpenGLContext *createContext(QOpenGLContext *context) override;
-    QWindowsOpenGLContext *createContext(HGLRC context, HWND window) override;
+    QWindowsOpenGLContext *createContext(HGLRC context, HWND window);
     void *moduleHandle() const override { return opengl32.moduleHandle(); }
     QOpenGLContext::OpenGLModuleType moduleType() const override
     { return QOpenGLContext::LibGL; }

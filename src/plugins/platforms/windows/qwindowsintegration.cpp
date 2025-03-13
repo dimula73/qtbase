@@ -55,6 +55,9 @@
 
 #include <limits.h>
 
+#if QT_CONFIG(egl)
+#  include "qwindowseglcontext.h"
+#endif
 #if !defined(QT_NO_OPENGL)
 #  include "qwindowsglcontext.h"
 #endif
@@ -365,7 +368,7 @@ QWindowsWindow *QWindowsIntegration::createPlatformWindowHelper(QWindow *window,
 
 QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
 {
-#if defined(QT_OPENGL_DYNAMIC)
+#if defined(QT_OPENGL_DYNAMIC) || QT_CONFIG(egl)
     QWindowsOpenGLTester::Renderer requestedRenderer = QWindowsOpenGLTester::requestedRenderer();
     switch (requestedRenderer) {
     case QWindowsOpenGLTester::DesktopGl:
@@ -378,6 +381,17 @@ QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
         }
         qCWarning(lcQpaGl, "System OpenGL failed. Falling back to Software OpenGL.");
         return QOpenGLStaticContext::create(true);
+#    if QT_CONFIG(egl)
+    // If ANGLE is requested, use it, don't try anything else.
+    case QWindowsOpenGLTester::AngleRendererD3d9:
+    case QWindowsOpenGLTester::AngleRendererD3d11:
+    case QWindowsOpenGLTester::AngleRendererD3d11On12:
+    case QWindowsOpenGLTester::AngleRendererD3d11Warp:
+    case QWindowsOpenGLTester::AngleRendererOpenGL:
+        return QWindowsEGLStaticContext::create(requestedRenderer);
+    case QWindowsOpenGLTester::Gles:
+        return QWindowsEGLStaticContext::create(requestedRenderer);
+#    endif
     case QWindowsOpenGLTester::SoftwareRasterizer:
         if (QWindowsStaticOpenGLContext *swCtx = QOpenGLStaticContext::create(true))
             return swCtx;
@@ -403,6 +417,13 @@ QWindowsStaticOpenGLContext *QWindowsStaticOpenGLContext::doCreate()
             return glCtx;
         }
     }
+#    if QT_CONFIG(egl)
+    if (QWindowsOpenGLTester::Renderers glesRenderers =
+                supportedRenderers & QWindowsOpenGLTester::GlesMask) {
+        if (QWindowsEGLStaticContext *eglCtx = QWindowsEGLStaticContext::create(glesRenderers))
+            return eglCtx;
+    }
+#    endif
     return QOpenGLStaticContext::create(true);
 #else
     return QOpenGLStaticContext::create();
@@ -449,7 +470,8 @@ QOpenGLContext *QWindowsIntegration::createOpenGLContext(HGLRC ctx, HWND window,
     if (!ctx || !window)
         return nullptr;
 
-    if (QWindowsStaticOpenGLContext *staticOpenGLContext = QWindowsIntegration::staticOpenGLContext()) {
+    if (auto *staticOpenGLContext = dynamic_cast<QOpenGLStaticContext *>(
+                QWindowsIntegration::staticOpenGLContext())) {
         std::unique_ptr<QWindowsOpenGLContext> result(staticOpenGLContext->createContext(ctx, window));
         if (result->isValid()) {
             auto *context = new QOpenGLContext;
@@ -462,6 +484,28 @@ QOpenGLContext *QWindowsIntegration::createOpenGLContext(HGLRC ctx, HWND window,
 
     return nullptr;
 }
+
+#if QT_CONFIG(egl)
+QOpenGLContext *QWindowsIntegration::createOpenGLContext(EGLContext context, EGLDisplay display, QOpenGLContext *shareContext) const
+{
+    if (!context)
+        return nullptr;
+
+    if (auto *staticOpenGLContext = dynamic_cast<QWindowsEGLStaticContext *>(
+        QWindowsIntegration::staticOpenGLContext())) {
+            std::unique_ptr<QWindowsOpenGLContext> result(staticOpenGLContext->createContext(context, display, shareContext));
+        if (result->isValid()) {
+            auto *context = new QOpenGLContext;
+            context->setShareContext(shareContext);
+            auto *contextPrivate = QOpenGLContextPrivate::get(context);
+            contextPrivate->adopt(result.release());
+            return context;
+        }
+    }
+
+    return nullptr;
+}
+#endif
 
 QWindowsStaticOpenGLContext *QWindowsIntegration::staticOpenGLContext()
 {

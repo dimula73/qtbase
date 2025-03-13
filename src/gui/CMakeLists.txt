@@ -360,7 +360,6 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_standarditemmodel
 # used direct public linkage against either libGLESv2 or libGL, depending
 # on the opengl _feature_. This is done by hand now here (where the
 # feature is available).
-# On Windows with 'dynamic' OpenGL we must not link to opengl32.
 # DO NOT MOVE THIS TO THE BEGINNING OF THE FILE, the feature variables are not
 # available until the qt_internal_add_module call.
 if(QT_FEATURE_opengl)
@@ -515,8 +514,19 @@ endif()
 qt_internal_extend_target(Gui CONDITION QT_FEATURE_egl
     SOURCES
         opengl/platform/egl/qeglconvenience.cpp opengl/platform/egl/qeglconvenience_p.h
-        opengl/platform/egl/qeglstreamconvenience.cpp opengl/platform/egl/qeglstreamconvenience_p.h
+        opengl/platform/egl/qeglnativeinterfacecommon.cpp
         opengl/platform/egl/qt_egl_p.h
+)
+
+if(QT_FEATURE_egl_convenience_direct_linking)
+target_link_libraries(Gui PRIVATE EGL::EGL)
+else()
+qt_internal_add_target_include_dirs(Gui EGL::EGL)
+endif()
+
+qt_internal_extend_target(Gui CONDITION QT_FEATURE_egl AND NOT WIN32
+    SOURCES
+        opengl/platform/egl/qeglstreamconvenience.cpp opengl/platform/egl/qeglstreamconvenience_p.h
     LIBRARIES
         EGL::EGL
 )
@@ -882,7 +892,7 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_opengles2
         opengl/qopengles2ext.h
 )
 
-qt_internal_extend_target(Gui CONDITION QT_FEATURE_egl AND QT_FEATURE_opengl AND NOT WASM
+qt_internal_extend_target(Gui CONDITION QT_FEATURE_egl AND QT_FEATURE_opengl AND NOT WASM AND NOT WIN32
     SOURCES
         opengl/platform/egl/qeglpbuffer.cpp opengl/platform/egl/qeglpbuffer_p.h
         opengl/platform/egl/qeglplatformcontext.cpp opengl/platform/egl/qeglplatformcontext_p.h

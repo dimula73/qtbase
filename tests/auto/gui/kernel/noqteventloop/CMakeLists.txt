@@ -24,7 +24,7 @@ qt_internal_add_test(tst_noqteventloop
 ## Scopes:
 #####################################################################
 
-qt_internal_extend_target(tst_noqteventloop CONDITION QT_FEATURE_dynamicgl AND WIN32
+qt_internal_extend_target(tst_noqteventloop CONDITION QT_FEATURE_opengl_dynamic AND WIN32
     LIBRARIES
         user32
 )
