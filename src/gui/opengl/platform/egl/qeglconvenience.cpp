@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 #include <linux/fb.h>
 #endif
+#include <QtGui/private/qtgui-config_p.h>
 #include <QtGui/private/qmath_p.h>
 
 #include "qeglconvenience_p.h"
@@ -18,6 +19,50 @@
 #endif
 
 QT_BEGIN_NAMESPACE
+
+QEglConfigFunctions::~QEglConfigFunctions() {}
+
+QEglConfigFunctions* q_resolveEglConfigFunctions(QEglConfigFunctions *func)
+{
+#if QT_CONFIG(egl_convenience_direct_linking)
+    if (!func) {
+        struct DirectFunctions : QEglConfigFunctions
+        {
+            EGLBoolean eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list,
+                                       EGLConfig *configs, EGLint config_size,
+                                       EGLint *num_config) override
+            {
+                return ::eglChooseConfig(dpy, attrib_list, configs, config_size, num_config);
+            }
+            EGLBoolean eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute,
+                                          EGLint *value) override
+            {
+                return ::eglGetConfigAttrib(dpy, config, attribute, value);
+            }
+            const char *eglQueryString(EGLDisplay dpy, EGLint name) override
+            {
+                return ::eglQueryString(dpy, name);
+            }
+            QFunctionPointer eglGetProcAddress(const char *procname) override
+            {
+                return reinterpret_cast<QFunctionPointer>(::eglGetProcAddress(procname));
+            }
+            EGLint eglGetError() override {
+                return ::eglGetError();
+            }
+        };
+        static DirectFunctions s_func;
+        return &s_func;
+    } else {
+        return func;
+    }
+#else
+    {
+        Q_ASSERT(func);
+        return func;
+    }
+#endif
+}
 
 QList<EGLint> q_createConfigAttributesFromFormat(const QSurfaceFormat &format)
 {
@@ -187,8 +232,9 @@ bool q_reduceConfigAttributes(QList<EGLint> *configAttributes)
     return false;
 }
 
-QEglConfigChooser::QEglConfigChooser(EGLDisplay display)
-    : m_display(display)
+QEglConfigChooser::QEglConfigChooser(EGLDisplay display, QEglConfigFunctions *func)
+    : m_func(q_resolveEglConfigFunctions(func))
+    , m_display(display)
     , m_surfaceType(EGL_WINDOW_BIT)
     , m_ignore(false)
     , m_confAttrRed(0)
@@ -218,7 +264,7 @@ EGLConfig QEglConfigChooser::chooseConfig()
     case QSurfaceFormat::DefaultRenderableType: {
 #ifndef QT_NO_OPENGL
         // NVIDIA EGL only provides desktop GL for development purposes, and recommends against using it.
-        const char *vendor = eglQueryString(display(), EGL_VENDOR);
+        const char *vendor = m_func->eglQueryString(display(), EGL_VENDOR);
         if (QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL && (!vendor || !strstr(vendor, "NVIDIA")))
             configureAttributes.append(EGL_OPENGL_BIT);
         else
@@ -241,7 +287,7 @@ EGLConfig QEglConfigChooser::chooseConfig()
         break;
     }
     if (needsES2Plus) {
-        if (m_format.majorVersion() >= 3 && q_hasEglExtension(display(), "EGL_KHR_create_context"))
+        if (m_format.majorVersion() >= 3 && q_hasEglExtension(display(), "EGL_KHR_create_context", m_func))
             configureAttributes.append(EGL_OPENGL_ES3_BIT_KHR);
         else
             configureAttributes.append(EGL_OPENGL_ES2_BIT);
@@ -252,7 +298,7 @@ EGLConfig QEglConfigChooser::chooseConfig()
     do {
         // Get the number of matching configurations for this set of properties.
         EGLint matching = 0;
-        if (!eglChooseConfig(display(), configureAttributes.constData(), nullptr, 0, &matching) || !matching)
+        if (!m_func->eglChooseConfig(display(), configureAttributes.constData(), nullptr, 0, &matching) || !matching)
             continue;
 
         // Fetch all of the matching configurations and find the
@@ -267,8 +313,8 @@ EGLConfig QEglConfigChooser::chooseConfig()
         m_confAttrAlpha = i == -1 ? 0 : configureAttributes.at(i+1);
 
         QList<EGLConfig> configs(matching);
-        eglChooseConfig(display(), configureAttributes.constData(), configs.data(),
-                        EGLint(configs.size()), &matching);
+        m_func->eglChooseConfig(display(), configureAttributes.constData(), configs.data(),
+                                EGLint(configs.size()), &matching);
         if (!cfg && matching > 0)
             cfg = configs.first();
 
@@ -304,21 +350,21 @@ bool QEglConfigChooser::filterConfig(EGLConfig config) const
 
     // Compare only if a size was given. Otherwise just accept.
     if (m_confAttrRed)
-        eglGetConfigAttrib(display(), config, EGL_RED_SIZE, &red);
+        m_func->eglGetConfigAttrib(display(), config, EGL_RED_SIZE, &red);
     if (m_confAttrGreen)
-        eglGetConfigAttrib(display(), config, EGL_GREEN_SIZE, &green);
+        m_func->eglGetConfigAttrib(display(), config, EGL_GREEN_SIZE, &green);
     if (m_confAttrBlue)
-        eglGetConfigAttrib(display(), config, EGL_BLUE_SIZE, &blue);
+        m_func->eglGetConfigAttrib(display(), config, EGL_BLUE_SIZE, &blue);
     if (m_confAttrAlpha)
-        eglGetConfigAttrib(display(), config, EGL_ALPHA_SIZE, &alpha);
+        m_func->eglGetConfigAttrib(display(), config, EGL_ALPHA_SIZE, &alpha);
 
     return red == m_confAttrRed && green == m_confAttrGreen
            && blue == m_confAttrBlue && alpha == m_confAttrAlpha;
 }
 
-EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format, bool highestPixelFormat, int surfaceType)
+EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format, bool highestPixelFormat, int surfaceType, QEglConfigFunctions *func)
 {
-    QEglConfigChooser chooser(display);
+    QEglConfigChooser chooser(display, func);
     chooser.setSurfaceFormat(format);
     chooser.setSurfaceType(surfaceType);
     chooser.setIgnoreColorChannels(highestPixelFormat);
@@ -326,7 +372,8 @@ EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format,
     return chooser.chooseConfig();
 }
 
-QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, const QSurfaceFormat &referenceFormat)
+QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, const QSurfaceFormat &referenceFormat,
+                                    QEglConfigFunctions *func)
 {
     QSurfaceFormat format;
     EGLint redSize     = 0;
@@ -338,14 +385,14 @@ QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, 
     EGLint sampleCount = 0;
     EGLint renderableType = 0;
 
-    eglGetConfigAttrib(display, config, EGL_RED_SIZE,     &redSize);
-    eglGetConfigAttrib(display, config, EGL_GREEN_SIZE,   &greenSize);
-    eglGetConfigAttrib(display, config, EGL_BLUE_SIZE,    &blueSize);
-    eglGetConfigAttrib(display, config, EGL_ALPHA_SIZE,   &alphaSize);
-    eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE,   &depthSize);
-    eglGetConfigAttrib(display, config, EGL_STENCIL_SIZE, &stencilSize);
-    eglGetConfigAttrib(display, config, EGL_SAMPLES,      &sampleCount);
-    eglGetConfigAttrib(display, config, EGL_RENDERABLE_TYPE, &renderableType);
+    func->eglGetConfigAttrib(display, config, EGL_RED_SIZE,     &redSize);
+    func->eglGetConfigAttrib(display, config, EGL_GREEN_SIZE,   &greenSize);
+    func->eglGetConfigAttrib(display, config, EGL_BLUE_SIZE,    &blueSize);
+    func->eglGetConfigAttrib(display, config, EGL_ALPHA_SIZE,   &alphaSize);
+    func->eglGetConfigAttrib(display, config, EGL_DEPTH_SIZE,   &depthSize);
+    func->eglGetConfigAttrib(display, config, EGL_STENCIL_SIZE, &stencilSize);
+    func->eglGetConfigAttrib(display, config, EGL_SAMPLES,      &sampleCount);
+    func->eglGetConfigAttrib(display, config, EGL_RENDERABLE_TYPE, &renderableType);
 
     if (referenceFormat.renderableType() == QSurfaceFormat::OpenVG && (renderableType & EGL_OPENVG_BIT))
         format.setRenderableType(QSurfaceFormat::OpenVG);
@@ -356,7 +403,7 @@ QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, 
     else if (referenceFormat.renderableType() == QSurfaceFormat::DefaultRenderableType
 #ifndef QT_NO_OPENGL
              && QOpenGLContext::openGLModuleType() == QOpenGLContext::LibGL
-             && !strstr(eglQueryString(display, EGL_VENDOR), "NVIDIA")
+             && !strstr(func->eglQueryString(display, EGL_VENDOR), "NVIDIA")
 #endif
              && (renderableType & EGL_OPENGL_BIT))
         format.setRenderableType(QSurfaceFormat::OpenGL);
@@ -377,16 +424,16 @@ QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, 
     // Clear the EGL error state because some of the above may
     // have errored out because the attribute is not applicable
     // to the surface type.  Such errors don't matter.
-    eglGetError();
+    func->eglGetError();
 
     return format;
 }
 
-bool q_hasEglExtension(EGLDisplay display, const char* extensionName)
+bool q_hasEglExtension(EGLDisplay display, const char* extensionName, QEglConfigFunctions *func)
 {
     QList<QByteArray> extensions =
         QByteArray(reinterpret_cast<const char *>
-            (eglQueryString(display, EGL_EXTENSIONS))).split(' ');
+            (func->eglQueryString(display, EGL_EXTENSIONS))).split(' ');
     return extensions.contains(extensionName);
 }
 
@@ -421,12 +468,12 @@ static struct AttrInfo attrs[] = {
     {EGL_MAX_SWAP_INTERVAL, "EGL_MAX_SWAP_INTERVAL"},
     {-1, nullptr}};
 
-void q_printEglConfig(EGLDisplay display, EGLConfig config)
+void q_printEglConfig(EGLDisplay display, EGLConfig config, QEglConfigFunctions *func)
 {
     EGLint index;
     for (index = 0; attrs[index].attr != -1; ++index) {
         EGLint value;
-        if (eglGetConfigAttrib(display, config, attrs[index].attr, &value)) {
+        if (func->eglGetConfigAttrib(display, config, attrs[index].attr, &value)) {
             qDebug("\t%s: %d", attrs[index].name, (int)value);
         }
     }
