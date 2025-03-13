@@ -4,6 +4,9 @@
 #include <QGuiApplication>
 #include <QSurfaceFormat>
 #include <QOpenGLContext>
+#include <QCommandLineParser>
+#include <QCommandLineOption>
+
 
 #include "glwindow.h"
 
@@ -17,6 +20,40 @@
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication::setApplicationName("Qt Hello GLES 3 Example");
+    QCoreApplication::setOrganizationName("QtProject");
+    QCoreApplication::setApplicationVersion(QT_VERSION_STR);
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription(QCoreApplication::applicationName());
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+#ifdef Q_OS_WIN
+    QCommandLineOption openglApiOption("api", "Choose openGL API to use", "opengl|opengles");
+    openglApiOption.setDefaultValue("opengles");
+    parser.addOption(openglApiOption);
+
+    {
+        QStringList arguments;
+        arguments.reserve(argc);
+        for (int i = 0; i < argc; ++i) {
+            arguments.append(QString::fromLatin1(argv[i]));
+        }
+        parser.process(arguments);
+    }
+
+    if (parser.isSet(openglApiOption)) {
+        if (!QStringList({"opengl", "opengles"}).contains(parser.value(openglApiOption))) {
+            qWarning() << "Unsupported openGL API flavour:" << parser.value(openglApiOption);
+            return 1;
+        }
+        if (parser.value(openglApiOption) == "opengles") {
+            QCoreApplication::setAttribute(Qt::AA_UseOpenGLES);
+        }
+    }
+#endif
+    
     QGuiApplication app(argc, argv);
 
     QSurfaceFormat fmt;
