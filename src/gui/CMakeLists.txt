@@ -519,9 +519,9 @@ qt_internal_extend_target(Gui CONDITION QT_FEATURE_egl
 )
 
 if(QT_FEATURE_egl_convenience_direct_linking)
-target_link_libraries(Gui PRIVATE EGL::EGL)
-else()
-qt_internal_add_target_include_dirs(Gui EGL::EGL)
+    target_link_libraries(Gui PRIVATE EGL::EGL)
+elseif(QT_FEATURE_egl)
+    qt_internal_add_target_include_dirs(Gui EGL::EGL)
 endif()
 
 qt_internal_extend_target(Gui CONDITION QT_FEATURE_egl AND NOT WIN32
