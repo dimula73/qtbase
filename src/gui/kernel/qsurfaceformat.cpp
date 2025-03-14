@@ -191,6 +191,17 @@ public:
     set, the window will be created with an sRGB-capable default
     framebuffer. Note that some platforms may return windows with a sRGB-capable
     default framebuffer even when not requested explicitly.
+
+    \value scRGBColorSpace When \c{EGL_EXT_gl_colorspace_scrgb_linear}
+    is supported by the platform and this value is set, the window will
+    be created with an scRGB-capable default framebuffer. Note that some
+    platforms may return windows with a scRGB-capable default framebuffer
+    even when not requested explicitly. It usually happens when the application
+    requests 16-bit surface format.
+
+    \value bt2020PQColorSpace When \c{EGL_EXT_gl_colorspace_bt2020_pq}
+    is supported by the platform and this value is set, the window will
+    be created with an bt2020 PQ default framebuffer.
  */
 
 /*!
