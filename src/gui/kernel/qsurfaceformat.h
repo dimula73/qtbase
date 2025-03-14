@@ -52,7 +52,9 @@ public:
 #if QT_DEPRECATED_SINCE(6,0)
     enum ColorSpace {
         DefaultColorSpace,
-        sRGBColorSpace
+        sRGBColorSpace,
+        scRGBColorSpace,
+        bt2020PQColorSpace
     };
     Q_ENUM(ColorSpace)
 #endif

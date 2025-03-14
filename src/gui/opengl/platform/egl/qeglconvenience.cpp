@@ -3,6 +3,7 @@
 
 
 #include <QtCore/qbytearray.h>
+#include <QtGui/qcolorspace.h>
 #include <QtGui/qopenglcontext.h>
 
 #ifdef Q_OS_LINUX
@@ -292,6 +293,10 @@ EGLConfig QEglConfigChooser::chooseConfig()
         else
             configureAttributes.append(EGL_OPENGL_ES2_BIT);
     }
+    if (m_format.colorSpace() == QColorSpace::SRgbLinear) {
+        configureAttributes.emplace_back(EGL_COLOR_COMPONENT_TYPE_EXT);
+        configureAttributes.emplace_back(EGL_COLOR_COMPONENT_TYPE_FLOAT_EXT);
+    }
     configureAttributes.append(EGL_NONE);
 
     EGLConfig cfg = nullptr;
@@ -419,6 +424,7 @@ QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, 
     format.setStencilBufferSize(stencilSize);
     format.setSamples(sampleCount);
     format.setStereo(false);         // EGL doesn't support stereo buffers
+    format.setColorSpace(referenceFormat.colorSpace());
     format.setSwapInterval(referenceFormat.swapInterval());
 
     // Clear the EGL error state because some of the above may
