@@ -85,11 +85,14 @@ public:
     void *moduleHandle() const override { return libGLESv2.moduleHandle(); }
     QOpenGLContext::OpenGLModuleType moduleType() const override { return QOpenGLContext::LibGLES; }
 
-    void *createWindowSurface(void *nativeWindow, void *nativeConfig, int *err) override;
+    void *createWindowSurface(void *nativeWindow, void *nativeConfig, const QColorSpace &colorSpace,
+                              int *err) override;
     void destroyWindowSurface(void *nativeSurface) override;
 
     QSurfaceFormat formatFromConfig(EGLDisplay display, EGLConfig config,
                                     const QSurfaceFormat &referenceFormat);
+
+    bool hasPixelFormatFloatSupport() const { return m_hasPixelFormatFloatSupport; }
 
     static QWindowsLibEGL libEGL;
     static QWindowsLibGLESv2 libGLESv2;
@@ -101,6 +104,10 @@ private:
                                 EGLDisplay *display, EGLint *major, EGLint *minor);
 
     const EGLDisplay m_display;
+    bool m_hasSRGBColorSpaceSupport;
+    bool m_hasSCRGBColorSpaceSupport;
+    bool m_hasBt2020PQColorSpaceSupport;
+    bool m_hasPixelFormatFloatSupport;
 };
 
 class QWindowsEGLContext : public QWindowsOpenGLContext, public QNativeInterface::QEGLContext
