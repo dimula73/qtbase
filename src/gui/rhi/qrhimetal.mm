@@ -870,6 +870,8 @@ bool QRhiMetal::isFeatureSupported(QRhi::Feature feature) const
     case QRhi::PerRenderTargetBlending:
     case QRhi::SampleVariables:
         return true;
+    case QRhi::FenceSync:
+        return false;
     default:
         Q_UNREACHABLE();
         return false;

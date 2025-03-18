@@ -1853,7 +1853,9 @@ public:
         PreferSoftwareRenderer = 1 << 1,
         EnablePipelineCacheDataSave = 1 << 2,
         EnableTimestamps = 1 << 3,
-        SuppressSmokeTestWarnings = 1 << 4
+        SuppressSmokeTestWarnings = 1 << 4,
+        EnableFrameCompletionStatus = 1 << 5
+
     };
     Q_DECLARE_FLAGS(Flags, Flag)
 
@@ -1912,7 +1914,8 @@ public:
         VariableRateShadingMap,
         VariableRateShadingMapWithTexture,
         PerRenderTargetBlending,
-        SampleVariables
+        SampleVariables,
+        FenceSync
     };
 
     enum BeginFrameFlag {
@@ -2009,6 +2012,7 @@ public:
     FrameOpResult endFrame(QRhiSwapChain *swapChain, EndFrameFlags flags = {});
     bool isRecordingFrame() const;
     int currentFrameSlot() const;
+    bool isLastFrameCompletedOnGPU() const;
 
     FrameOpResult beginOffscreenFrame(QRhiCommandBuffer **cb, BeginFrameFlags flags = {});
     FrameOpResult endOffscreenFrame(EndFrameFlags flags = {});
