@@ -871,6 +871,8 @@ bool QRhiD3D12::isFeatureSupported(QRhi::Feature feature) const
         return false;
     case QRhi::DepthClamp:
         return true;
+    case QRhi::FenceSync:
+        return false;
     }
     return false;
 }
