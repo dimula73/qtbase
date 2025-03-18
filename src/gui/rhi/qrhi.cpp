@@ -8422,6 +8422,12 @@ QRhiImplementation::~QRhiImplementation()
     }
 }
 
+bool QRhiImplementation::isLastFrameCompletedOnGPU()
+{
+    // by default return true as if the frame has been completed momentarily
+    return true;
+}
+
 bool QRhiImplementation::isCompressedFormat(QRhiTexture::Format format) const
 {
     return (format >= QRhiTexture::BC1 && format <= QRhiTexture::BC7)
@@ -11579,6 +11585,20 @@ bool QRhi::isRecordingFrame() const
 int QRhi::currentFrameSlot() const
 {
     return d->currentFrameSlot;
+}
+
+/*!
+    Checks if the lastly rendered frame has been completed its rendering
+    on GPU or not. The information might be important in cases when the
+    client would like to limit the number updates and avoid bloating the
+    GPU pipeline with unfinished update requests
+
+    To use this feature, the hasFeature(FenceSync) should be true and
+    the context should be created with EnableFrameCompletionStatus flag.
+*/
+bool QRhi::isLastFrameCompletedOnGPU() const
+{
+    return d->isLastFrameCompletedOnGPU();
 }
 
 /*!

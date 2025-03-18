@@ -867,6 +867,8 @@ bool QRhiD3D12::isFeatureSupported(QRhi::Feature feature) const
     case QRhi::PerRenderTargetBlending:
     case QRhi::SampleVariables:
         return true;
+    case QRhi::FenceSync:
+        return false;
     }
     return false;
 }
