@@ -71,6 +71,11 @@ bool QBackingStoreRhiSupport::create()
 
 #if QT_CONFIG(opengl)
     if (!rhi && m_config.api() == QPlatformBackingStoreRhiConfig::OpenGL) {
+
+        // on openGL we support frame completion feedback, which allows smart
+        // frame throttling in QWidgetRepaintManager
+        flags |= QRhi::EnableFrameCompletionStatus;
+
         surface = QRhiGles2InitParams::newFallbackSurface(m_format);
         QRhiGles2InitParams params;
         params.fallbackSurface = surface;

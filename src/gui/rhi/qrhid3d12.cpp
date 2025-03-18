@@ -750,6 +750,8 @@ bool QRhiD3D12::isFeatureSupported(QRhi::Feature feature) const
         // there is no Multisample Resolve support for depth/stencil formats
         // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/hardware-support-for-direct3d-12-1-formats
         return false;
+    case QRhi::FenceSync:
+        return false;
     }
     return false;
 }

@@ -4825,6 +4825,8 @@ bool QRhiVulkan::isFeatureSupported(QRhi::Feature feature) const
         return true;
     case QRhi::ResolveDepthStencil:
         return caps.renderPass2KHR && caps.depthStencilResolveKHR;
+    case QRhi::FenceSync:
+        return false;
     default:
         Q_UNREACHABLE_RETURN(false);
     }

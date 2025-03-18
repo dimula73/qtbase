@@ -641,6 +641,8 @@ bool QRhiD3D11::isFeatureSupported(QRhi::Feature feature) const
         return false; // because we use fully typed formats for textures and relaxed casting is a D3D12 thing
     case QRhi::ResolveDepthStencil:
         return false;
+    case QRhi::FenceSync:
+        return false;
     default:
         Q_UNREACHABLE();
         return false;

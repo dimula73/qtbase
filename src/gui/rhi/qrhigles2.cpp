@@ -1102,6 +1102,49 @@ bool QRhiGles2::create(QRhi::Flags flags)
         caps.glesMultiviewMultisampleRenderToTexture = false;
     }
 
+    if (caps.gles) {
+        caps.fenceSync = caps.ctxMajor >= 3;
+        if (!caps.fenceSync) {
+            caps.fenceSync = ctx->hasExtension("GL_OES_EGL_sync");
+        }
+    } else {
+        caps.fenceSync = caps.ctxMajor > 3 || (caps.ctxMajor == 3 && caps.ctxMinor >= 2);
+        if (!caps.fenceSync) {
+            caps.fenceSync = ctx->hasExtension("GL_ARB_sync");
+        }
+        QByteArrayView rendererView(renderer);
+#if defined Q_OS_LINUX
+        // OpenGL drivers for AMD on Linux have a bug, which will not let fence-sync
+        // object to trigger unless glClientWaitSync() is called at least once over it.
+        if (rendererView.contains(QByteArrayLiteral("AMD"))) {
+            caps.needsFenceSyncWorkaround = true;
+        }
+#endif
+    }
+    
+    if (caps.fenceSync) {
+        glFenceSync = reinterpret_cast<GLsync(QOPENGLF_APIENTRYP)(GLenum, GLbitfield)>(
+                ctx->getProcAddress(QByteArrayLiteral("glFenceSync")));
+        glGetSynciv = 
+                reinterpret_cast<void(QOPENGLF_APIENTRYP)(GLsync, GLenum, GLsizei, GLsizei *, GLint *)>(
+                ctx->getProcAddress(QByteArrayLiteral("glGetSynciv")));
+        glDeleteSync = reinterpret_cast<void(QOPENGLF_APIENTRYP)(GLsync)>(
+                ctx->getProcAddress(QByteArrayLiteral("glDeleteSync")));
+        glClientWaitSync =
+                reinterpret_cast<GLenum(QOPENGLF_APIENTRYP)(GLsync, GLbitfield, GLuint64)>(
+                        ctx->getProcAddress(QByteArrayLiteral("glClientWaitSync")));
+
+        if (!glFenceSync || !glGetSynciv || !glDeleteSync || !glClientWaitSync) {
+            qWarning("QRhiGles2::create(): Couldn't resolve FenceSync functions. Disabling the feature...");
+            caps.fenceSync = false;
+        }
+    }
+
+    if (!caps.fenceSync && flags.testFlag(QRhi::EnableFrameCompletionStatus)) {
+        qWarning("QRhiGles2::create(): Couldn't enable EnableFrameCompletionStatus: FenceSync feature is not available.");
+        flags.setFlag(QRhi::EnableFrameCompletionStatus, false);
+    }
+
     caps.unpackRowLength = !caps.gles || caps.ctxMajor >= 3;
 
     nativeHandlesStruct.context = ctx;
@@ -1467,6 +1510,8 @@ bool QRhiGles2::isFeatureSupported(QRhi::Feature feature) const
         return false;
     case QRhi::ResolveDepthStencil:
         return true;
+    case QRhi::FenceSync:
+        return caps.fenceSync;
     default:
         Q_UNREACHABLE_RETURN(false);
     }
@@ -2162,6 +2207,10 @@ QRhi::FrameOpResult QRhiGles2::endFrame(QRhiSwapChain *swapChain, QRhi::EndFrame
 
     executeCommandBuffer(&swapChainD->cb);
 
+    if (rhiFlags.testFlags(QRhi::EnableFrameCompletionStatus)) {
+        m_frameSyncObject.emplace(this);
+    }
+
     if (swapChainD->surface && !flags.testFlag(QRhi::SkipPresent)) {
         ctx->swapBuffers(swapChainD->surface);
         needsMakeCurrentDueToSwap = true;
@@ -2256,6 +2305,22 @@ QRhi::FrameOpResult QRhiGles2::finish()
         f->glFinish();
     }
     return QRhi::FrameOpSuccess;
+}
+
+bool QRhiGles2::isLastFrameCompletedOnGPU()
+{
+    // check if no frame has been stared yet
+    if (!m_frameSyncObject) return true;
+    
+    // check for the cached value to avoid context switching
+    if (m_frameSyncObject->hasOnceSignaled()) return true;
+
+    if (!ensureContext()) {
+        qWarning() << "QRhiGles2::isLastFrameCompletedOnGPU(): failed to activate context";
+        return true;
+    }
+
+    return m_frameSyncObject->isSignaled();
 }
 
 static bool bufferAccessIsWrite(QGles2Buffer::Access access)
@@ -6700,6 +6765,38 @@ bool QGles2SwapChainTimestamps::tryQueryTimestamps(int pairIndex, QRhiGles2 *rhi
 
     active[pairIndex] = false;
     return result;
+}
+
+QRhiGles2::SyncObject::SyncObject(QRhiGles2 *impl)
+    : m_impl(impl)
+{
+    Q_ASSERT(m_impl->caps.fenceSync);
+
+    m_sync = m_impl->glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (m_impl->caps.needsFenceSyncWorkaround) {
+        m_impl->glClientWaitSync(m_sync, 0, 1);
+    }
+}
+
+QRhiGles2::SyncObject::~SyncObject()
+{
+    Q_ASSERT(m_sync);
+    m_impl->glDeleteSync(m_sync);
+}
+
+bool QRhiGles2::SyncObject::hasOnceSignaled() const
+{
+    return m_hasOnceSignaled;
+}
+
+bool QRhiGles2::SyncObject::isSignaled() const
+{
+    Q_ASSERT(m_sync);
+
+    GLint status = -1;
+    m_impl->glGetSynciv(m_sync, GL_SYNC_STATUS, 1, 0, &status);
+    m_hasOnceSignaled |= status == GL_SIGNALED;
+    return m_hasOnceSignaled;
 }
 
 QT_END_NAMESPACE

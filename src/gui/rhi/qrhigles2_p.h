@@ -800,6 +800,7 @@ public:
     QRhi::FrameOpResult beginOffscreenFrame(QRhiCommandBuffer **cb, QRhi::BeginFrameFlags flags) override;
     QRhi::FrameOpResult endOffscreenFrame(QRhi::EndFrameFlags flags) override;
     QRhi::FrameOpResult finish() override;
+    bool isLastFrameCompletedOnGPU() override;
 
     void resourceUpdate(QRhiCommandBuffer *cb, QRhiResourceUpdateBatch *resourceUpdates) override;
 
@@ -961,6 +962,12 @@ public:
     void (QOPENGLF_APIENTRYP glObjectLabel)(GLenum, GLuint, GLsizei, const GLchar *) = nullptr;
     void (QOPENGLF_APIENTRYP glFramebufferTexture2DMultisampleEXT)(GLenum, GLenum, GLenum, GLuint, GLint, GLsizei) = nullptr;
     void (QOPENGLF_APIENTRYP glFramebufferTextureMultisampleMultiviewOVR)(GLenum, GLenum, GLuint, GLint, GLsizei, GLint, GLsizei) = nullptr;
+
+    GLsync (QOPENGLF_APIENTRYP glFenceSync)(GLenum, GLbitfield) = nullptr;
+    void (QOPENGLF_APIENTRYP glGetSynciv)(GLsync, GLenum, GLsizei, GLsizei*, GLint*) = nullptr;
+    void (QOPENGLF_APIENTRYP glDeleteSync)(GLsync) = nullptr;
+    GLenum (QOPENGLF_APIENTRYP glClientWaitSync)(GLsync,GLbitfield,GLuint64) = nullptr;
+
     uint vao = 0;
     struct Caps {
         Caps()
@@ -1019,7 +1026,9 @@ public:
               objectLabel(false),
               glesMultisampleRenderToTexture(false),
               glesMultiviewMultisampleRenderToTexture(false),
-              unpackRowLength(false)
+              unpackRowLength(false),
+              fenceSync(false),
+              needsFenceSyncWorkaround(false)
         { }
         int ctxMajor;
         int ctxMinor;
@@ -1079,6 +1088,8 @@ public:
         uint glesMultisampleRenderToTexture : 1;
         uint glesMultiviewMultisampleRenderToTexture : 1;
         uint unpackRowLength : 1;
+        uint fenceSync : 1;
+        uint needsFenceSyncWorkaround : 1;
     } caps;
     QGles2SwapChain *currentSwapChain = nullptr;
     QSet<GLint> supportedCompressedFormats;
@@ -1151,6 +1162,24 @@ public:
         };
         QVarLengthArray<SeparateSampler, 4> separateSamplerBindings;
     } m_scratch;
+
+    struct SyncObject {
+        SyncObject(QRhiGles2 *impl);
+        ~SyncObject();
+
+        SyncObject& operator=(SyncObject &&rhs) = delete;
+        SyncObject& operator=(const SyncObject &rhs) = delete;
+        
+        bool hasOnceSignaled() const;
+        bool isSignaled() const;
+
+    private:
+        QRhiGles2 *m_impl;
+        GLsync m_sync = 0;
+        mutable bool m_hasOnceSignaled = false;
+    };
+
+    std::optional<SyncObject> m_frameSyncObject;
 };
 
 Q_DECLARE_TYPEINFO(QRhiGles2::DeferredReleaseEntry, Q_RELOCATABLE_TYPE);

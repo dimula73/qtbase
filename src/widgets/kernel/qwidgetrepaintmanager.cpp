@@ -8,6 +8,7 @@
 #include <QtCore/qglobal.h>
 #include <QtCore/qdebug.h>
 #include <QtCore/qvarlengtharray.h>
+#include <QtCore/private/qsignalcompressor_p.h>
 #include <QtGui/qevent.h>
 #include <QtWidgets/qapplication.h>
 #include <QtGui/qpaintengine.h>
@@ -71,12 +72,52 @@ private:
 // ---------------------------------------------------------------------------
 
 QWidgetRepaintManager::QWidgetRepaintManager(QWidget *topLevel)
-    : tlw(topLevel), store(tlw->backingStore())
+    : tlw(topLevel), store(tlw->backingStore()), 
+       updateCompressor(new QSignalCompressor(1000.0 / 60.0, QSignalCompressor::FIRST_ACTIVE))
 {
     Q_ASSERT(store);
 
     // Ensure all existing subsurfaces and static widgets are added to their respective lists.
     updateLists(topLevel);
+
+    updateCompressor->connect(updateCompressor, &QSignalCompressor::timeout, 
+                              updateCompressor, [this] () {this->slotCompressedUpdate();});
+
+    // HACK ALERT: we use signal compressor as the fake receiver of the signals,
+    // since we don't have any QObject handy. It will automatically disconnect the 
+    // signals on QWidgetRepaintManager's destruction
+    QObject::connect(qGuiApp, &QGuiApplication::screenAdded,
+        updateCompressor, [this] (QScreen*) {this->slotUpdateScreenRefreshRate();});
+    QObject::connect(qGuiApp, &QGuiApplication::screenRemoved,
+        updateCompressor, [this] (QScreen*) {this->slotUpdateScreenRefreshRate();});
+    
+    slotUpdateScreenRefreshRate();
+}
+
+void QWidgetRepaintManager::slotUpdateScreenRefreshRate()
+{
+    for (QMetaObject::Connection &connection : screenConnections) {
+        QObject::disconnect(connection);
+    }
+    screenConnections.clear();
+
+    const QList<QScreen*> screens = qGuiApp->screens();
+    qreal maxRefreshRate = 30;
+    for (QScreen *screen : screens) {
+        if (screen->refreshRate() > maxRefreshRate) {
+            maxRefreshRate = screen->refreshRate();
+        }
+        // HACK ALERT: we use signal compressor as the fake receiver of the signals,
+        // since we don't have any QObject handy. It will automatically disconnect the 
+        // signals on QWidgetRepaintManager's destruction
+        screenConnections.append(
+            QObject::connect(screen, &QScreen::refreshRateChanged,
+                updateCompressor, [this] (qreal) {this->slotUpdateScreenRefreshRate();}));
+    }
+
+    qCInfo(lcWidgetPainting) << "QWidgetRepaintManager: Selecting screen refresh rate" << maxRefreshRate << "fps";
+
+    updateCompressor->setDelay(qRound(1000.0 / maxRefreshRate));
 }
 
 void QWidgetRepaintManager::updateLists(QWidget *cur)
@@ -103,6 +144,7 @@ QWidgetRepaintManager::~QWidgetRepaintManager()
         resetWidget(dirtyWidgets.at(c));
     for (int c = 0; c < dirtyRenderToTextureWidgets.size(); ++c)
         resetWidget(dirtyRenderToTextureWidgets.at(c));
+    delete updateCompressor;
 }
 
 /*!
@@ -302,6 +344,7 @@ void QWidgetRepaintManager::removeDirtyWidget(QWidget *w)
 
     dirtyWidgets.removeAll(w);
     dirtyRenderToTextureWidgets.removeAll(w);
+    pendingUpdates.removeAll(w);
     resetWidget(w);
 
     needsFlushWidgets.removeAll(w);
@@ -366,7 +409,10 @@ void QWidgetRepaintManager::sendUpdateRequest(QWidget *widget, UpdateTime update
         // normal backingstore sync machinery.
         if (!widget->d_func()->shouldPaintOnScreen())
             updateRequestSent = true;
-        QCoreApplication::postEvent(widget, new QEvent(QEvent::UpdateRequest), Qt::LowEventPriority);
+
+        // all "Update Later" updates go through the signal compressor
+        pendingUpdates.append(widget);
+        updateCompressor->start();
         break;
     case UpdateNow: {
         QEvent event(QEvent::UpdateRequest);
@@ -374,6 +420,66 @@ void QWidgetRepaintManager::sendUpdateRequest(QWidget *widget, UpdateTime update
         break;
         }
     }
+}
+
+void QWidgetRepaintManager::slotCompressedUpdate()
+{
+#define DEBUG_FRAME_COMPRESSION
+
+#ifdef DEBUG_FRAME_COMPRESSION
+    static quint64 totalRepaints = 0;
+    static quint64 skippedRepaints = 0;
+#endif
+
+    for (auto it = pendingUpdates.begin(); it != pendingUpdates.end();) {
+        QWidget *widget = *it;
+        QWindow *window = widget->windowHandle();
+        
+        if (!window) {
+            qWarning() << "QWidgetRepaintManager::slotCompressedUpdate(): the widget doesn't have a native window!" << widget;
+            it = pendingUpdates.erase(it);
+            QCoreApplication::postEvent(widget, new QEvent(QEvent::UpdateRequest), Qt::LowEventPriority);
+            continue;
+        }
+
+        if (window->type() == Qt::ForeignWindow) {
+            qWarning() << "QWidgetRepaintManager::slotCompressedUpdate(): widget is a foreign window, no compression" << widget;
+            it = pendingUpdates.erase(it);
+            QCoreApplication::postEvent(widget, new QEvent(QEvent::UpdateRequest), Qt::LowEventPriority);
+            continue;
+        }
+
+        const bool flushWithRhi = widget->d_func()->usesRhiFlush;
+        if (flushWithRhi) {
+            if (!store->handle()->rhi(window)->isLastFrameCompletedOnGPU()) {
+#ifdef DEBUG_FRAME_COMPRESSION
+                skippedRepaints++;
+#endif
+                ++it;
+                continue;
+            }
+#ifdef DEBUG_FRAME_COMPRESSION
+            else {
+                totalRepaints++;
+            }
+#endif
+        }
+
+        it = pendingUpdates.erase(it);
+        QCoreApplication::postEvent(widget, new QEvent(QEvent::UpdateRequest), Qt::LowEventPriority);
+    }
+
+    if (!pendingUpdates.isEmpty()) {
+        updateCompressor->start();
+    }
+
+#ifdef DEBUG_FRAME_COMPRESSION
+    if (totalRepaints > 200) {
+        qDebug() << "QWidgetRepaintManager: skipped frames:" << qreal(skippedRepaints) / totalRepaints * 100.0 << "%";
+        totalRepaints = 0;
+        skippedRepaints = 0;
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------
