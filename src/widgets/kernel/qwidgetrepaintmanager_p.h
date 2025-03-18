@@ -26,6 +26,7 @@ QT_BEGIN_NAMESPACE
 class QPlatformTextureList;
 class QPlatformTextureListWatcher;
 class QWidgetRepaintManager;
+class QSignalCompressor;
 
 class Q_WIDGETS_EXPORT QWidgetRepaintManager
 {
@@ -71,6 +72,10 @@ public:
     bool bltRect(const QRect &rect, int dx, int dy, QWidget *widget);
 
 private:
+    void slotCompressedUpdate();
+    void slotUpdateScreenRefreshRate();
+
+private:
     void updateLists(QWidget *widget);
 
     void addDirtyWidget(QWidget *widget, const QRegion &rgn);
@@ -109,6 +114,10 @@ private:
 
     QElapsedTimer perfTime;
     int perfFrames = 0;
+
+    QSignalCompressor *updateCompressor = nullptr;
+    QList<QWidget*> pendingUpdates;
+    QList<QMetaObject::Connection> screenConnections;
 
     Q_DISABLE_COPY_MOVE(QWidgetRepaintManager)
 };
