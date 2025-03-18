@@ -5416,6 +5416,8 @@ bool QRhiVulkan::isFeatureSupported(QRhi::Feature feature) const
         return true;
     case QRhi::DepthClamp:
         return true;
+    case QRhi::FenceSync:
+        return false;
     default:
         Q_UNREACHABLE_RETURN(false);
     }

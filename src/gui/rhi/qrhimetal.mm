@@ -881,6 +881,8 @@ bool QRhiMetal::isFeatureSupported(QRhi::Feature feature) const
         return true;
     case QRhi::DepthClamp:
         return caps.depthClamp;
+    case QRhi::FenceSync:
+        return false;
     default:
         Q_UNREACHABLE();
         return false;
