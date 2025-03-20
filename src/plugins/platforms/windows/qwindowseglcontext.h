@@ -51,6 +51,14 @@ struct QWindowsLibEGL
     EGLDisplay(EGLAPIENTRY *eglGetPlatformDisplayEXT)(EGLenum platform, void *native_display,
                                                       const EGLint *attrib_list);
 
+    typedef void *EGLObjectKHR;
+    typedef void *EGLLabelKHR;
+    typedef void(APIENTRY *EGLDEBUGPROCKHR)(EGLenum error, const char *command, EGLint messageType,
+                                            EGLLabelKHR threadLabel, EGLLabelKHR objectLabel,
+                                            const char *message);
+    EGLint(EGLAPIENTRY *eglDebugMessageControlKHR)(EGLDEBUGPROCKHR callback,
+                                                   const EGLAttrib *attrib_list);
+
 private:
     void *resolve(const char *name);
     HMODULE m_lib;
@@ -94,21 +102,24 @@ public:
                                     const QSurfaceFormat &referenceFormat);
 
     bool hasPixelFormatFloatSupport() const { return m_hasPixelFormatFloatSupport; }
+    bool isYUpInNDC() const { return m_isYUpInNDC; }
 
     static QWindowsLibEGL libEGL;
     static QWindowsLibGLESv2 libGLESv2;
     static std::unique_ptr<QEglConfigFunctions> eglConfigFunctions;
 
 private:
-    explicit QWindowsEGLStaticContext(EGLDisplay display);
+    explicit QWindowsEGLStaticContext(EGLDisplay display, bool isYUpInNDC);
     static bool initializeAngle(QWindowsOpenGLTester::Renderers preferredType, HDC dc,
-                                EGLDisplay *display, EGLint *major, EGLint *minor);
+                                EGLDisplay *display, EGLint *major, EGLint *minor,
+                                QWindowsOpenGLTester::Renderer *resultRenderer);
 
     const EGLDisplay m_display;
     bool m_hasSRGBColorSpaceSupport;
     bool m_hasSCRGBColorSpaceSupport;
     bool m_hasBt2020PQColorSpaceSupport;
     bool m_hasPixelFormatFloatSupport;
+    bool m_isYUpInNDC;
 };
 
 class QWindowsEGLContext : public QWindowsOpenGLContext, public QNativeInterface::QEGLContext
@@ -129,6 +140,7 @@ public:
     QSurfaceFormat format() const override { return m_format; }
     bool isSharing() const override { return m_shareContext != EGL_NO_CONTEXT; }
     bool isValid() const override { return m_eglContext != EGL_NO_CONTEXT && !m_markedInvalid; }
+    bool isYUpInNDC() const override;
 
     EGLContext nativeContext() const override { return m_eglContext; }
     EGLDisplay display() const override { return m_eglDisplay; }
