@@ -1043,7 +1043,8 @@ public:
               unpackRowLength(false),
               perRenderTargetBlending(false),
               fenceSync(false),
-              needsFenceSyncWorkaround(false)
+              needsFenceSyncWorkaround(false),
+              yUpInNDC(true)
         { }
         int ctxMajor;
         int ctxMinor;
@@ -1109,6 +1110,7 @@ public:
         uint sampleVariables : 1;
         uint fenceSync : 1;
         uint needsFenceSyncWorkaround : 1;
+        uint yUpInNDC : 1;
     } caps;
     QGles2SwapChain *currentSwapChain = nullptr;
     QSet<GLint> supportedCompressedFormats;
