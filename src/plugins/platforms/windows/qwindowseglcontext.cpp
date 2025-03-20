@@ -20,6 +20,31 @@ using namespace std::string_view_literals;
 
 QT_BEGIN_NAMESPACE
 
+void APIENTRY angleDebugMessagesCallback(EGLenum error, const char *command, EGLint messageType,
+                                         EGLLabelKHR threadLabel, EGLLabelKHR objectLabel,
+                                         const char *message)
+{
+    Q_UNUSED(threadLabel)
+    Q_UNUSED(objectLabel)
+
+    const QLatin1StringView severity([=] () {
+        if (messageType == EGL_DEBUG_MSG_CRITICAL_KHR) {
+            return "critical";
+        } else if (messageType == EGL_DEBUG_MSG_ERROR_KHR) {
+            return "error";
+        } else if (messageType == EGL_DEBUG_MSG_WARN_KHR) {
+            return "warn";
+        } else if (messageType == EGL_DEBUG_MSG_INFO_KHR) {
+            return "info";
+        } else {
+            return "unknown";
+        }
+    }());
+
+    qDebug().noquote().nospace() << "ANGLE (" << severity << ") " << command << ": \"" << message
+                                 << "\" (code: " << Qt::hex << Qt::showbase << error << ")";
+}
+
 struct IndirectFunctions : QEglConfigFunctions
 {
     IndirectFunctions(QWindowsLibEGL *libEGLArg) : libEGL(libEGLArg) {}
@@ -142,9 +167,13 @@ bool QWindowsLibEGL::init()
         return false;
 
     eglGetPlatformDisplayEXT = nullptr;
+    eglDebugMessageControlKHR = nullptr;
+
 #ifdef EGL_ANGLE_platform_angle
+
     eglGetPlatformDisplayEXT = reinterpret_cast<decltype(eglGetPlatformDisplayEXT)>(
             eglGetProcAddress("eglGetPlatformDisplayEXT"));
+    RESOLVE(eglDebugMessageControlKHR);
 #endif
 
     return true;
@@ -232,6 +261,17 @@ bool QWindowsEGLStaticContext::initializeAngle(QWindowsOpenGLTester::Renderers p
         } else if (preferredType & QWindowsOpenGLTester::AngleRendererOpenGL)
             attributes = anglePlatformAttributes[4].data();
         if (attributes) {
+#  ifdef EGL_ANGLE_platform_angle
+            {
+                EGLint result =
+                        libEGL.eglDebugMessageControlKHR(&angleDebugMessagesCallback, nullptr);
+                if (result != EGL_SUCCESS) {
+                    qWarning() << "WARNING: failed to install ANGLE debug handler, error:"
+                               << Qt::hex << Qt::showbase << result;
+                }
+            }
+#  endif
+
             *display = libEGL.eglGetPlatformDisplayEXT(EGL_PLATFORM_ANGLE_ANGLE, dc, attributes);
             if (!libEGL.eglInitialize(*display, major, minor)) {
                 qWarning("%s: Unable to initialize ANGLE: error 0x%x", __FUNCTION__,
@@ -310,6 +350,16 @@ QWindowsEGLStaticContext::~QWindowsEGLStaticContext()
 {
     qCDebug(lcQpaGl) << __FUNCTION__ << "Releasing EGL display " << m_display;
     libEGL.eglTerminate(m_display);
+
+#ifdef EGL_ANGLE_platform_angle
+    {
+        EGLint result = libEGL.eglDebugMessageControlKHR(nullptr, nullptr);
+        if (result != EGL_SUCCESS) {
+            qWarning() << "WARNING: failed to de-install ANGLE debug handler, error:" << Qt::hex
+                       << Qt::showbase << result;
+        }
+    }
+#endif
 }
 
 QWindowsOpenGLContext *QWindowsEGLStaticContext::createContext(QOpenGLContext *context)
