@@ -53,6 +53,7 @@ public:
 
     virtual bool isSharing() const { return false; }
     virtual bool isValid() const { return true; }
+    virtual bool isYUpInNDC() const { return true; }
 
     virtual QFunctionPointer getProcAddress(const char *procName) = 0;
 
