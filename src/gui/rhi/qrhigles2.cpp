@@ -1145,6 +1145,8 @@ bool QRhiGles2::create(QRhi::Flags flags)
         flags.setFlag(QRhi::EnableFrameCompletionStatus, false);
     }
 
+    caps.yUpInNDC = ctx->handle()->isYUpInNDC();
+
     caps.unpackRowLength = !caps.gles || caps.ctxMajor >= 3;
 
     nativeHandlesStruct.context = ctx;
@@ -1248,7 +1250,7 @@ bool QRhiGles2::isYUpInFramebuffer() const
 
 bool QRhiGles2::isYUpInNDC() const
 {
-    return true;
+    return caps.yUpInNDC;
 }
 
 bool QRhiGles2::isClipDepthZeroToOne() const
