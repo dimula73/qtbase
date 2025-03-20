@@ -207,12 +207,13 @@ bool QWindowsLibGLESv2::init()
     return glBindTexture && glCreateShader && glClearDepthf;
 }
 
-QWindowsEGLStaticContext::QWindowsEGLStaticContext(EGLDisplay display)
+QWindowsEGLStaticContext::QWindowsEGLStaticContext(EGLDisplay display, bool isYUpInNDC)
     : m_display(display),
       m_hasSRGBColorSpaceSupport(false),
       m_hasSCRGBColorSpaceSupport(false),
       m_hasBt2020PQColorSpaceSupport(false),
-      m_hasPixelFormatFloatSupport(false)
+      m_hasPixelFormatFloatSupport(false),
+      m_isYUpInNDC(isYUpInNDC)
 {
     m_hasSRGBColorSpaceSupport = q_hasEglExtension(display, "EGL_KHR_gl_colorspace", eglConfigFunctions.get());
     m_hasSCRGBColorSpaceSupport = q_hasEglExtension(display, "EGL_EXT_gl_colorspace_scrgb_linear", eglConfigFunctions.get());
@@ -227,7 +228,7 @@ QWindowsEGLStaticContext::QWindowsEGLStaticContext(EGLDisplay display)
 
 bool QWindowsEGLStaticContext::initializeAngle(QWindowsOpenGLTester::Renderers preferredType,
                                                HDC dc, EGLDisplay *display, EGLint *major,
-                                               EGLint *minor)
+                                               EGLint *minor, QWindowsOpenGLTester::Renderer *resultRenderer)
 {
 #ifdef EGL_ANGLE_platform_angle
     if (libEGL.eglGetPlatformDisplayEXT
@@ -243,23 +244,30 @@ bool QWindowsEGLStaticContext::initializeAngle(QWindowsOpenGLTester::Renderers p
                 { EGL_PLATFORM_ANGLE_TYPE_ANGLE, EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE, EGL_NONE },
         } };
         const EGLint *attributes = nullptr;
-        if (preferredType & QWindowsOpenGLTester::AngleRendererD3d11)
+        if (preferredType & QWindowsOpenGLTester::AngleRendererD3d11) {
             attributes = anglePlatformAttributes[0].data();
-        else if (preferredType & QWindowsOpenGLTester::AngleRendererD3d9)
+            *resultRenderer = QWindowsOpenGLTester::AngleRendererD3d11;
+        } else if (preferredType & QWindowsOpenGLTester::AngleRendererD3d9) {
             attributes = anglePlatformAttributes[1].data();
-        else if (preferredType & QWindowsOpenGLTester::AngleRendererD3d11Warp)
+            *resultRenderer = QWindowsOpenGLTester::AngleRendererD3d9;
+        } else if (preferredType & QWindowsOpenGLTester::AngleRendererD3d11Warp) {
             attributes = anglePlatformAttributes[2].data();
-        else if (preferredType & QWindowsOpenGLTester::AngleRendererD3d11On12) {
+            *resultRenderer = QWindowsOpenGLTester::AngleRendererD3d11Warp;
+        } else if (preferredType & QWindowsOpenGLTester::AngleRendererD3d11On12) {
             if (IsWindows10OrGreater()) {
                 attributes = anglePlatformAttributes[3].data();
+                *resultRenderer = QWindowsOpenGLTester::AngleRendererD3d11On12;
             } else {
                 qWarning("%s: Attempted to use D3d11on12 in an unsupported version of windows. "
                          "Retargeting for D3d11Warp",
                          __FUNCTION__);
                 attributes = anglePlatformAttributes[2].data();
+                *resultRenderer = QWindowsOpenGLTester::AngleRendererD3d11Warp;
             }
-        } else if (preferredType & QWindowsOpenGLTester::AngleRendererOpenGL)
+        } else if (preferredType & QWindowsOpenGLTester::AngleRendererOpenGL) {
             attributes = anglePlatformAttributes[4].data();
+            *resultRenderer = QWindowsOpenGLTester::AngleRendererOpenGL;
+        }
         if (attributes) {
 #  ifdef EGL_ANGLE_platform_angle
             {
@@ -290,6 +298,7 @@ bool QWindowsEGLStaticContext::initializeAngle(QWindowsOpenGLTester::Renderers p
     Q_UNUSED(display);
     Q_UNUSED(major);
     Q_UNUSED(minor);
+    Q_UNUSED(resultRenderer);
 #endif
     return true;
 }
@@ -319,10 +328,12 @@ QWindowsEGLStaticContext::create(QWindowsOpenGLTester::Renderers preferredType)
     EGLint major{ 0 };
     EGLint minor{ 0 };
 
-    if (!initializeAngle(preferredType, dc, &display, &major, &minor)
+    QWindowsOpenGLTester::Renderer resultRenderer = QWindowsOpenGLTester::InvalidRenderer;
+
+    if (!initializeAngle(preferredType, dc, &display, &major, &minor, &resultRenderer)
         && (preferredType & QWindowsOpenGLTester::AngleRendererD3d11)) {
         preferredType &= ~QWindowsOpenGLTester::AngleRendererD3d11;
-        initializeAngle(preferredType, dc, &display, &major, &minor);
+        initializeAngle(preferredType, dc, &display, &major, &minor, &resultRenderer);
     }
 
     if (display == EGL_NO_DISPLAY)
@@ -343,7 +354,13 @@ QWindowsEGLStaticContext::create(QWindowsOpenGLTester::Renderers preferredType)
 
     qCDebug(lcQpaGl) << __FUNCTION__ << "Created EGL display" << display << 'v' << major << '.'
                      << minor;
-    return new QWindowsEGLStaticContext(display);
+    
+    /**
+     * When openGL backend is activated in ANGLE, then Y axis is flipped. Hence we should
+     * notify all the users about it.
+     */
+    const bool isYUpInNDC = resultRenderer != QWindowsOpenGLTester::AngleRendererOpenGL;
+    return new QWindowsEGLStaticContext(display, isYUpInNDC);
 }
 
 QWindowsEGLStaticContext::~QWindowsEGLStaticContext()
@@ -396,6 +413,11 @@ void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *na
     if (colorSpaceSupported) {
         attributes.emplace_back(EGL_GL_COLORSPACE);
         attributes.emplace_back(eglColorSpace);
+    }
+
+    if (!m_isYUpInNDC) {
+        attributes.emplace_back(EGL_SURFACE_ORIENTATION_ANGLE);
+        attributes.emplace_back(EGL_SURFACE_ORIENTATION_INVERT_Y_ANGLE);
     }
 
     attributes.emplace_back(EGL_NONE);
@@ -717,6 +739,11 @@ void QWindowsEGLContext::beginFrame()
     if (result == EGL_FALSE) {
         qCWarning(lcQpaGl, "QWindowsEGLContext::beforeCompose: eglWaitNative failed");
     }
+}
+
+bool QWindowsEGLContext::isYUpInNDC() const
+{
+    return m_staticContext->isYUpInNDC();
 }
 
 QT_END_NAMESPACE
