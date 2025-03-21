@@ -62,7 +62,7 @@ rhi
 
 qtConfig(opengl) {
     SUBDIRS += qopengltextureblitter
-    qtConfig(egl): SUBDIRS += qopenglcontext
+    qtConfig(egl): SUBDIRS += qopenglcontext hdr-qopenglwidget
 }
 
 win32: SUBDIRS -= network_remote_stresstest network_stresstest

@@ -275,7 +275,9 @@ QBackingStoreDefaultCompositor::directionForColorSpaces(const QColorSpace &src,
         return ConversionDirection::None;
     }
 
-    if (src == QColorSpace::SRgb && dst == QColorSpace::SRgbLinear) {
+    if (src == dst) {
+        return ConversionDirection::None;
+    } else if (src == QColorSpace::SRgb && dst == QColorSpace::SRgbLinear) {
         return ConversionDirection::sRgb_to_scRGB;
     } else if (src == QColorSpace::SRgb && dst == QColorSpace::Bt2100Pq) {
         return ConversionDirection::sRgb_to_bt2020pq;
