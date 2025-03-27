@@ -1514,6 +1514,8 @@ bool QRhiGles2::isFeatureSupported(QRhi::Feature feature) const
         return true;
     case QRhi::FenceSync:
         return caps.fenceSync;
+    case QRhi::DynamicBlendSwitch:
+        return true;
     default:
         Q_UNREACHABLE_RETURN(false);
     }

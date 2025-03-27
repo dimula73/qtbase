@@ -752,6 +752,8 @@ bool QRhiD3D12::isFeatureSupported(QRhi::Feature feature) const
         return false;
     case QRhi::FenceSync:
         return false;
+    case QRhi::DynamicBlendSwitch:
+        return false;
     }
     return false;
 }

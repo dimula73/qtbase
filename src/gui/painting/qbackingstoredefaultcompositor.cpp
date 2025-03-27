@@ -292,38 +292,44 @@ QBackingStoreDefaultCompositor::directionForColorSpaces(const QColorSpace &src,
     return ConversionDirection::None;
 }
 
+void QBackingStoreDefaultCompositor::setBlendOnThePipeline(PipelineBlend blend, QRhiGraphicsPipeline *ps) 
+{
+    switch (blend) {
+        case PipelineBlend::Alpha:
+        {
+            QRhiGraphicsPipeline::TargetBlend blend;
+            blend.enable = true;
+            blend.srcColor = QRhiGraphicsPipeline::SrcAlpha;
+            blend.dstColor = QRhiGraphicsPipeline::OneMinusSrcAlpha;
+            blend.srcAlpha = QRhiGraphicsPipeline::One;
+            blend.dstAlpha = QRhiGraphicsPipeline::One;
+            ps->setTargetBlends({ blend });
+        }
+            break;
+        case PipelineBlend::PremulAlpha:
+        {
+            QRhiGraphicsPipeline::TargetBlend blend;
+            blend.enable = true;
+            blend.srcColor = QRhiGraphicsPipeline::One;
+            blend.dstColor = QRhiGraphicsPipeline::OneMinusSrcAlpha;
+            blend.srcAlpha = QRhiGraphicsPipeline::One;
+            blend.dstAlpha = QRhiGraphicsPipeline::One;
+            ps->setTargetBlends({ blend });
+        }
+            break;
+        default:
+            ps->setTargetBlends( { QRhiGraphicsPipeline::TargetBlend() } );
+            break;
+        }
+}
+
 QRhiGraphicsPipeline *QBackingStoreDefaultCompositor::createGraphicsPipeline(
         QRhi *rhi, QRhiShaderResourceBindings *srb, QRhiRenderPassDescriptor *rpDesc,
         PipelineBlend blend, ConversionDirection conversionDirection)
 {
     QRhiGraphicsPipeline *ps = rhi->newGraphicsPipeline();
 
-    switch (blend) {
-    case PipelineBlend::Alpha:
-    {
-        QRhiGraphicsPipeline::TargetBlend blend;
-        blend.enable = true;
-        blend.srcColor = QRhiGraphicsPipeline::SrcAlpha;
-        blend.dstColor = QRhiGraphicsPipeline::OneMinusSrcAlpha;
-        blend.srcAlpha = QRhiGraphicsPipeline::One;
-        blend.dstAlpha = QRhiGraphicsPipeline::One;
-        ps->setTargetBlends({ blend });
-    }
-        break;
-    case PipelineBlend::PremulAlpha:
-    {
-        QRhiGraphicsPipeline::TargetBlend blend;
-        blend.enable = true;
-        blend.srcColor = QRhiGraphicsPipeline::One;
-        blend.dstColor = QRhiGraphicsPipeline::OneMinusSrcAlpha;
-        blend.srcAlpha = QRhiGraphicsPipeline::One;
-        blend.dstAlpha = QRhiGraphicsPipeline::One;
-        ps->setTargetBlends({ blend });
-    }
-        break;
-    default:
-        break;
-    }
+    setBlendOnThePipeline(blend, ps);
 
     QLatin1String fragmentShaderName;
 
@@ -489,11 +495,17 @@ void QBackingStoreDefaultCompositor::ensureResources(QRhiResourceUpdateBatch *re
 QRhiGraphicsPipeline *QBackingStoreDefaultCompositor::ensurePipeline(
         PipelineBlend blend, QRhiRenderPassDescriptor *rpDesc, qsizetype pipelineIndex)
 {
+    /**
+     * When QRhi::DynamicBlendSwitch is supported we just reuse the same no-blend
+     * pipeline to perform all the work. We just switch the blending mode 
+     * before requesting the pipeline.
+     */
     using StorageType = QVarLengthArray<std::unique_ptr<QRhiGraphicsPipeline>, numConversionDirections>;
-    StorageType &pipelineStorage = 
-        blend == PipelineBlend::None ? m_psNoBlend :
-        blend == PipelineBlend::Alpha ? m_psBlend :
-        m_psPremulBlend;
+    StorageType &pipelineStorage =
+            blend == PipelineBlend::None || m_rhi->isFeatureSupported(QRhi::DynamicBlendSwitch)
+            ? m_psNoBlend
+            : blend == PipelineBlend::Alpha ? m_psBlend
+                                            : m_psPremulBlend;
 
     Q_ASSERT(pipelineIndex < pipelineStorage.size());
 
@@ -505,6 +517,9 @@ QRhiGraphicsPipeline *QBackingStoreDefaultCompositor::ensurePipeline(
                                    static_cast<ConversionDirection>(pipelineIndex)));
     }
 
+    if (m_rhi->isFeatureSupported(QRhi::DynamicBlendSwitch)) {
+        setBlendOnThePipeline(blend, pipelineStorage[pipelineIndex].get());
+    }
     return pipelineStorage[pipelineIndex].get();
 }
 

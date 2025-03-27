@@ -1875,7 +1875,8 @@ public:
         MultiView,
         TextureViewFormat,
         ResolveDepthStencil,
-        FenceSync
+        FenceSync,
+        DynamicBlendSwitch
     };
 
     enum BeginFrameFlag {
