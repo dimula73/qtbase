@@ -1915,7 +1915,8 @@ public:
         VariableRateShadingMapWithTexture,
         PerRenderTargetBlending,
         SampleVariables,
-        FenceSync
+        FenceSync,
+        DynamicBlendSwitch
     };
 
     enum BeginFrameFlag {
