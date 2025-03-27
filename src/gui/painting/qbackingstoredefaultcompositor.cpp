@@ -481,26 +481,31 @@ void QBackingStoreDefaultCompositor::ensureResources(QRhiResourceUpdateBatch *re
     if (!m_widgetQuadData.isValid())
         m_widgetQuadData = createPerQuadData(m_texture.get());
 
-    QRhiShaderResourceBindings *srb = m_widgetQuadData.srb; // just for the layout
-    if (m_psNoBlend.empty()) {
-        for (qsizetype i = 0; i < numConversionDirections; ++i) {
-            m_psNoBlend.emplace_back(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::None,
-                                                            static_cast<ConversionDirection>(i)));
-        }
+    m_psNoBlend.resize(numConversionDirections);
+    m_psBlend.resize(numConversionDirections);
+    m_psPremulBlend.resize(numConversionDirections);
+}
+
+QRhiGraphicsPipeline *QBackingStoreDefaultCompositor::ensurePipeline(
+        PipelineBlend blend, QRhiRenderPassDescriptor *rpDesc, qsizetype pipelineIndex)
+{
+    using StorageType = QVarLengthArray<std::unique_ptr<QRhiGraphicsPipeline>, numConversionDirections>;
+    StorageType &pipelineStorage = 
+        blend == PipelineBlend::None ? m_psNoBlend :
+        blend == PipelineBlend::Alpha ? m_psBlend :
+        m_psPremulBlend;
+
+    Q_ASSERT(pipelineIndex < pipelineStorage.size());
+
+    if (!pipelineStorage[pipelineIndex]) {
+        QRhiShaderResourceBindings *srb = m_widgetQuadData.srb; // just for the layout
+        Q_ASSERT(srb);
+        pipelineStorage[pipelineIndex].reset(
+            createGraphicsPipeline(m_rhi, srb, rpDesc, blend,
+                                   static_cast<ConversionDirection>(pipelineIndex)));
     }
-    if (m_psBlend.empty()) {
-        for (qsizetype i = 0; i < numConversionDirections; ++i) {
-            m_psBlend.emplace_back(createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::Alpha,
-                                                          static_cast<ConversionDirection>(i)));
-        }
-    }
-    if (m_psPremulBlend.empty()) {
-        for (qsizetype i = 0; i < numConversionDirections; ++i) {
-            m_psPremulBlend.emplace_back(
-                    createGraphicsPipeline(m_rhi, srb, rpDesc, PipelineBlend::PremulAlpha,
-                                           static_cast<ConversionDirection>(i)));
-        }
-    }
+
+    return pipelineStorage[pipelineIndex].get();
 }
 
 QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatformBackingStore *backingStore,
@@ -662,7 +667,9 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
 
         cb->beginPass(target, clearColor, { 1.0f, 0 });
 
-        cb->setGraphicsPipeline(m_psNoBlend[static_cast<qsizetype>(ConversionDirection::None)].get());
+        cb->setGraphicsPipeline(
+            ensurePipeline(PipelineBlend::None, swapchain->renderPassDescriptor(),
+            static_cast<qsizetype>(ConversionDirection::None)));
         cb->setViewport({ 0, 0, float(outputSizeInPixels.width()), float(outputSizeInPixels.height()) });
         QRhiCommandBuffer::VertexInput vbufBinding(m_vbuf.get(), 0);
         cb->setVertexInput(0, 1, &vbufBinding);
@@ -678,7 +685,8 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
 
                     const qsizetype pipelineIndex = static_cast<qsizetype>(
                         directionForColorSpaces(textures->colorSpace(i), window->format().colorSpace()));
-                    cb->setGraphicsPipeline(m_psNoBlend[pipelineIndex].get());
+                    cb->setGraphicsPipeline(ensurePipeline(
+                            PipelineBlend::None, swapchain->renderPassDescriptor(), pipelineIndex));
                     cb->setShaderResources(srb);
                     cb->draw(6);
                 }
@@ -688,8 +696,9 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
         {
             const qsizetype pipelineIndex = static_cast<qsizetype>(
                     directionForColorSpaces(QColorSpace::SRgb, window->format().colorSpace()));
-            cb->setGraphicsPipeline(premultiplied ? m_psPremulBlend[pipelineIndex].get()
-                                                  : m_psBlend[pipelineIndex].get());
+            cb->setGraphicsPipeline(ensurePipeline(
+                    premultiplied ? PipelineBlend::PremulAlpha : PipelineBlend::Alpha,
+                    swapchain->renderPassDescriptor(), pipelineIndex));
         }
 
         // Backingstore texture with the normal widgets.
@@ -705,11 +714,11 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
                 if (m_textureQuadData[i].isValid()) {
                     const qsizetype pipelineIndex = static_cast<qsizetype>(
                         directionForColorSpaces(textures->colorSpace(i), window->format().colorSpace()));
-                    if (flags.testFlag(QPlatformTextureList::NeedsPremultipliedAlphaBlending))
-                        cb->setGraphicsPipeline(m_psPremulBlend[pipelineIndex].get());
-                    else
-                        cb->setGraphicsPipeline(m_psBlend[pipelineIndex].get());
-
+                    cb->setGraphicsPipeline(ensurePipeline(
+                            flags.testFlag(QPlatformTextureList::NeedsPremultipliedAlphaBlending)
+                                    ? PipelineBlend::PremulAlpha
+                                    : PipelineBlend::Alpha,
+                            swapchain->renderPassDescriptor(), pipelineIndex));
                     QRhiShaderResourceBindings* srb = m_textureQuadData[i].srb;
                     if (buffer == QRhiSwapChain::RightBuffer && m_textureQuadData[i].srbExtra)
                         srb = m_textureQuadData[i].srbExtra;

@@ -77,6 +77,8 @@ private:
                                                  ConversionDirection conversionDirection);
     void ensureResources(QRhiResourceUpdateBatch *resourceUpdates,
                          QRhiRenderPassDescriptor *rpDesc);
+    QRhiGraphicsPipeline *ensurePipeline(PipelineBlend blend, QRhiRenderPassDescriptor *rpDesc,
+                                         qsizetype pipelineIndex);
     QRhiTexture *toTexture(const QImage &image,
                            QRhi *rhi,
                            QRhiResourceUpdateBatch *resourceUpdates,
