@@ -1940,7 +1940,8 @@ public:
         SampleVariables,
         InstanceIndexIncludesBaseInstance,
         DepthClamp,
-        FenceSync
+        FenceSync,
+        DynamicBlendSwitch
     };
 
     enum BeginFrameFlag {

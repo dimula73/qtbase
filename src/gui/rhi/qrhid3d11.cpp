@@ -718,6 +718,8 @@ bool QRhiD3D11::isFeatureSupported(QRhi::Feature feature) const
         return true;
     case QRhi::FenceSync:
         return false;
+    case QRhi::DynamicBlendSwitch:
+        return false;
     default:
         Q_UNREACHABLE();
         return false;
