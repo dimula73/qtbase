@@ -43,19 +43,30 @@ Q_GUI_EXPORT QList<EGLint> q_createConfigAttributesFromFormat(const QSurfaceForm
 
 Q_GUI_EXPORT bool q_reduceConfigAttributes(QList<EGLint> *configAttributes);
 
-Q_GUI_EXPORT EGLConfig q_configFromGLFormat(EGLDisplay display,
-                                               const QSurfaceFormat &format,
-                                               bool highestPixelFormat = false,
-                                               int surfaceType = EGL_WINDOW_BIT,
-                                               QEglConfigFunctions *func = nullptr);
+Q_GUI_EXPORT EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format,
+                                            bool highestPixelFormat = false,
+                                            int surfaceType = EGL_WINDOW_BIT);
+
+Q_GUI_EXPORT EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format,
+                                            bool highestPixelFormat,
+                                            int surfaceType,
+                                            QEglConfigFunctions *func);
 
 Q_GUI_EXPORT QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config,
-                                                    const QSurfaceFormat &referenceFormat = {},
-                                                    QEglConfigFunctions *func = nullptr);
+                                                 const QSurfaceFormat &referenceFormat = {});
 
-Q_GUI_EXPORT bool q_hasEglExtension(EGLDisplay display,const char* extensionName, QEglConfigFunctions *func = nullptr);
+Q_GUI_EXPORT QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config,
+                                                 const QSurfaceFormat &referenceFormat,
+                                                 QEglConfigFunctions *func);
 
-Q_GUI_EXPORT void q_printEglConfig(EGLDisplay display, EGLConfig config, QEglConfigFunctions *func = nullptr);
+Q_GUI_EXPORT bool q_hasEglExtension(EGLDisplay display, const char *extensionName);
+
+Q_GUI_EXPORT bool q_hasEglExtension(EGLDisplay display, const char *extensionName,
+                                    QEglConfigFunctions *func);
+
+Q_GUI_EXPORT void q_printEglConfig(EGLDisplay display, EGLConfig config);
+
+Q_GUI_EXPORT void q_printEglConfig(EGLDisplay display, EGLConfig config, QEglConfigFunctions *func);
 
 #ifdef Q_OS_UNIX
 Q_GUI_EXPORT QSizeF q_physicalScreenSizeFromFb(int framebufferDevice,

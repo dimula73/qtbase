@@ -367,6 +367,11 @@ bool QEglConfigChooser::filterConfig(EGLConfig config) const
            && blue == m_confAttrBlue && alpha == m_confAttrAlpha;
 }
 
+EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format, bool highestPixelFormat, int surfaceType)
+{
+    return q_configFromGLFormat(display, format, highestPixelFormat, surfaceType, q_resolveEglConfigFunctions(nullptr));
+}
+
 EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format, bool highestPixelFormat, int surfaceType, QEglConfigFunctions *func)
 {
     QEglConfigChooser chooser(display, func);
@@ -375,6 +380,11 @@ EGLConfig q_configFromGLFormat(EGLDisplay display, const QSurfaceFormat &format,
     chooser.setIgnoreColorChannels(highestPixelFormat);
 
     return chooser.chooseConfig();
+}
+
+QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, const QSurfaceFormat &referenceFormat)
+{
+    return q_glFormatFromConfig(display, config, referenceFormat, q_resolveEglConfigFunctions(nullptr));
 }
 
 QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, const QSurfaceFormat &referenceFormat,
@@ -435,6 +445,11 @@ QSurfaceFormat q_glFormatFromConfig(EGLDisplay display, const EGLConfig config, 
     return format;
 }
 
+bool q_hasEglExtension(EGLDisplay display, const char* extensionName)
+{
+    return q_hasEglExtension(display, extensionName, q_resolveEglConfigFunctions(nullptr));
+}
+
 bool q_hasEglExtension(EGLDisplay display, const char* extensionName, QEglConfigFunctions *func)
 {
     QList<QByteArray> extensions =
@@ -473,6 +488,11 @@ static struct AttrInfo attrs[] = {
     {EGL_MIN_SWAP_INTERVAL, "EGL_MIN_SWAP_INTERVAL"},
     {EGL_MAX_SWAP_INTERVAL, "EGL_MAX_SWAP_INTERVAL"},
     {-1, nullptr}};
+
+void q_printEglConfig(EGLDisplay display, EGLConfig config)
+{
+    q_printEglConfig(display, config, q_resolveEglConfigFunctions(nullptr));
+}
 
 void q_printEglConfig(EGLDisplay display, EGLConfig config, QEglConfigFunctions *func)
 {
