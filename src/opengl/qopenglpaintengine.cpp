@@ -704,16 +704,20 @@ void QOpenGL2PaintEngineEx::beginNativePainting()
 
         const QSize sz = d->device->size();
 
-        if (!d->legacyFuncs) {
-            d->legacyFuncs = QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_2_1>();
-        }
+        /**
+         * Don't cache legacy functions since they are already cached at the level
+         * of QOpenGLVersionFunctionsFactory. That is also the reason why we shouldn't
+         * delete this object.
+         */
+        QOpenGLFunctions_2_1 *legacyFuncs = QOpenGLVersionFunctionsFactory::get<QOpenGLFunctions_2_1>();
+        Q_ASSERT(legacyFuncs);
 
-        d->legacyFuncs->glMatrixMode(GL_PROJECTION);
-        d->legacyFuncs->glLoadIdentity();
-        d->legacyFuncs->glOrtho(0, sz.width(), sz.height(), 0, -999999, 999999);
+        legacyFuncs->glMatrixMode(GL_PROJECTION);
+        legacyFuncs->glLoadIdentity();
+        legacyFuncs->glOrtho(0, sz.width(), sz.height(), 0, -999999, 999999);
 
-        d->legacyFuncs->glMatrixMode(GL_MODELVIEW);
-        d->legacyFuncs->glLoadMatrixf(&mv_matrix[0][0]);
+        legacyFuncs->glMatrixMode(GL_MODELVIEW);
+        legacyFuncs->glLoadMatrixf(&mv_matrix[0][0]);
     }
 #endif // !QT_CONFIG(opengles2)
 
