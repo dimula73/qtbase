@@ -816,6 +816,9 @@ QFile::copy(const QString &newName)
             QFile out(newName);
             if (out.open(QIODevice::ReadWrite)) {
                 bool result = out.d_func()->engine()->syncToDisk();
+                if (!result) {
+                    qWarning("QIODevice::copy: Failed to sync file after copying");
+                }
                 out.close();
             } else {
                 d->setError(QFile::CopyError, tr("Cannot open %1 for output").arg(newName));
