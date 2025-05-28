@@ -30,6 +30,11 @@ struct wl_seat;
 struct wl_keyboard;
 struct wl_pointer;
 struct wl_touch;
+
+#if QT_CONFIG(xkbcommon)
+struct xkb_context;
+#endif
+
 #endif
 
 #if defined(Q_OS_VISIONOS) || defined(Q_QDOC)
@@ -74,6 +79,9 @@ struct Q_GUI_EXPORT QWaylandApplication
     virtual wl_touch *touch() const = 0;
     virtual uint lastInputSerial() const = 0;
     virtual wl_seat *lastInputSeat() const = 0;
+#if QT_CONFIG(xkbcommon)
+    virtual xkb_context *xkbContext() const = 0;
+#endif
 };
 #endif
 

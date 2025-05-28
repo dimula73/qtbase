@@ -62,6 +62,9 @@ public:
     wl_touch *touch() const override;
     uint lastInputSerial() const override;
     wl_seat *lastInputSeat() const override;
+#if QT_CONFIG(xkbcommon)
+    struct xkb_context *xkbContext() const override;
+#endif
 
 private:
     static void setWindowMargins(QWindow *window, const QMargins &margins);

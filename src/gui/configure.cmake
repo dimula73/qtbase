@@ -1251,7 +1251,7 @@ qt_feature("system-xcb-xinput" PRIVATE SYSTEM_LIBRARY
     DISABLE INPUT_bundled_xcb_xinput STREQUAL 'yes'
     EMIT_IF QT_FEATURE_xcb
 )
-qt_feature("xkbcommon" PRIVATE
+qt_feature("xkbcommon" PUBLIC
     LABEL "xkbcommon"
     CONDITION XKB_FOUND
 )

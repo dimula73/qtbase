@@ -64,6 +64,11 @@ void *QWaylandNativeInterface::nativeResourceForIntegration(const QByteArray &re
             return touch->wl_touch();
         return nullptr;
     }
+#if QT_CONFIG(xkbcommon)
+    if (lowerCaseResource == "xkb_context") {
+        return m_integration->display()->xkbContext();
+    }
+#endif
     if (lowerCaseResource == "serial")
         return reinterpret_cast<void *>(quintptr(m_integration->display()->defaultInputDevice()->serial()));
 
@@ -125,6 +130,13 @@ wl_seat *QtWaylandClient::QWaylandNativeInterface::lastInputSeat() const
         return inputDevice->wl_seat();
     return nullptr;
 }
+
+#if QT_CONFIG(xkbcommon)
+struct xkb_context *QtWaylandClient::QWaylandNativeInterface::xkbContext() const
+{
+    return m_integration->display()->xkbContext();
+}
+#endif
 
 void *QWaylandNativeInterface::nativeResourceForWindow(const QByteArray &resourceString, QWindow *window)
 {
