@@ -222,6 +222,11 @@ QT_DEFINE_PRIVATE_NATIVE_INTERFACE(QVxKeyMapper);
     \return the seat associated with the default input device.
 */
 
+/*!
+    \fn struct xkb_context *QNativeInterface::QWaylandApplication::xkbContext() const
+    \return the XKB context associated with the application.
+*/
+
 QT_DEFINE_NATIVE_INTERFACE(QWaylandApplication);
 
 /*!
