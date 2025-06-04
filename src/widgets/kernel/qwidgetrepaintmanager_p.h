@@ -26,7 +26,7 @@ QT_BEGIN_NAMESPACE
 class QPlatformTextureList;
 class QPlatformTextureListWatcher;
 class QWidgetRepaintManager;
-class QSignalCompressor;
+class QFrameRateCompressor;
 
 class Q_WIDGETS_EXPORT QWidgetRepaintManager
 {
@@ -115,7 +115,7 @@ private:
     QElapsedTimer perfTime;
     int perfFrames = 0;
 
-    QSignalCompressor *updateCompressor = nullptr;
+    QFrameRateCompressor *updateCompressor = nullptr;
     QList<QWidget*> pendingUpdates;
     QList<QMetaObject::Connection> screenConnections;
 

@@ -9,7 +9,7 @@
 #include <QtCore/qglobal.h>
 #include <QtCore/qdebug.h>
 #include <QtCore/qvarlengtharray.h>
-#include <QtCore/private/qsignalcompressor_p.h>
+#include <QtCore/private/qframeratecompressor_p.h>
 #include <QtGui/qevent.h>
 #include <QtWidgets/qapplication.h>
 #include <QtGui/qpaintengine.h>
@@ -73,16 +73,17 @@ private:
 // ---------------------------------------------------------------------------
 
 QWidgetRepaintManager::QWidgetRepaintManager(QWidget *topLevel)
-    : tlw(topLevel), store(tlw->backingStore()), 
-       updateCompressor(new QSignalCompressor(1000.0 / 60.0, QSignalCompressor::FIRST_ACTIVE))
+    : tlw(topLevel),
+      store(tlw->backingStore()),
+      updateCompressor(new QFrameRateCompressor(qFloor(1000.0 / 60.0)))
 {
     Q_ASSERT(store);
 
     // Ensure all existing subsurfaces and static widgets are added to their respective lists.
     updateLists(topLevel);
 
-    updateCompressor->connect(updateCompressor, &QSignalCompressor::timeout, 
-                              updateCompressor, [this] () {this->slotCompressedUpdate();});
+    updateCompressor->connect(updateCompressor, &QFrameRateCompressor::timeout, updateCompressor,
+                              [this]() { this->slotCompressedUpdate(); });
 
     // HACK ALERT: we use signal compressor as the fake receiver of the signals,
     // since we don't have any QObject handy. It will automatically disconnect the 
@@ -91,7 +92,7 @@ QWidgetRepaintManager::QWidgetRepaintManager(QWidget *topLevel)
         updateCompressor, [this] (QScreen*) {this->slotUpdateScreenRefreshRate();});
     QObject::connect(qGuiApp, &QGuiApplication::screenRemoved,
         updateCompressor, [this] (QScreen*) {this->slotUpdateScreenRefreshRate();});
-    
+
     slotUpdateScreenRefreshRate();
 }
 
@@ -118,7 +119,9 @@ void QWidgetRepaintManager::slotUpdateScreenRefreshRate()
 
     qCInfo(lcWidgetPainting) << "QWidgetRepaintManager: Selecting screen refresh rate" << maxRefreshRate << "fps";
 
-    updateCompressor->setDelay(qRound(1000.0 / maxRefreshRate));
+    // we must use qFloor() instead of qRound() to make sure the update rate
+    // is a little bit faster than the frame rate
+    updateCompressor->setDelay(qFloor(1000.0 / maxRefreshRate));
 }
 
 void QWidgetRepaintManager::updateLists(QWidget *cur)
