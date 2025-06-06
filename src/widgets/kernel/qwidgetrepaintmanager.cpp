@@ -454,7 +454,7 @@ void QWidgetRepaintManager::slotCompressedUpdate()
 
         const bool flushWithRhi = widget->d_func()->usesRhiFlush;
         if (flushWithRhi) {
-            if (!store->handle()->rhi(window)->isLastFrameCompletedOnGPU()) {
+            if (!store->handle()->rhi(window)->isOneButLastFrameCompletedOnGPU()) {
 #ifdef DEBUG_FRAME_COMPRESSION
                 skippedRepaints++;
 #endif
