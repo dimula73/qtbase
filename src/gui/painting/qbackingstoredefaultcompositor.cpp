@@ -99,8 +99,12 @@ QRhiTexture *QBackingStoreDefaultCompositor::toTexture(const QImage &sourceImage
 
     if (needsConversion)
         image = image.convertToFormat(QImage::Format_RGBA8888);
-    else
-        image.detach(); // if it was just wrapping data, that's no good, we need ownership, so detach
+    else {
+        static bool useFastQImageDataTransfer = qEnvironmentVariableIntValue("QT_BACKING_STORE_USE_FAST_QIMAGE_TRANSFER");
+        if (!useFastQImageDataTransfer) {
+            image.detach(); // if it was just wrapping data, that's no good, we need ownership, so detach
+        }
+    }
 
     if (resized) {
         if (!m_texture)
