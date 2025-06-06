@@ -58,8 +58,8 @@ void QFrameRateCompressor::start()
         qCInfo(lcFrameRateCompressor)
                 << this << "Starting framerate timer:" << m_timer->interval() << "ms";
         m_signalsPending = true;
-        slotTimerExpired();
         m_timer->start();
+        slotTimerExpired();
     } else {
         m_signalsPending = true;
     }
@@ -84,9 +84,8 @@ int QFrameRateCompressor::delay() const
 void QFrameRateCompressor::slotTimerExpired()
 {
     if (m_signalsPending) {
-        m_signalsPending = false;
         m_numTicksWithoutEmission = 0;
-        Q_EMIT timeout();
+        tryEmitSignalSafely();
     } else {
         m_numTicksWithoutEmission++;
         if (m_numTicksWithoutEmission > 10) {
@@ -96,6 +95,24 @@ void QFrameRateCompressor::slotTimerExpired()
             m_timer->stop();
         }
     }
+}
+
+void QFrameRateCompressor::tryEmitSignalSafely()
+{
+    /**
+     * It may happen that start() is called from the inside
+     * of the handler for the timeout signal. In such case we
+     * should just skip this tick.
+     */
+
+    m_isEmitting++;
+
+    if (m_isEmitting == 1) {
+        m_signalsPending = false;
+        Q_EMIT timeout();
+    }
+
+    m_isEmitting--;
 }
 
 QT_END_NAMESPACE
