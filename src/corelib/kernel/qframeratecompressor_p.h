@@ -57,8 +57,12 @@ Q_SIGNALS:
     void timeout();
 
 private:
+    void tryEmitSignalSafely();
+
+private :
     QTimer *m_timer = nullptr;
     bool m_signalsPending = false;
+    int m_isEmitting = 0;
     int m_numTicksWithoutEmission = 0;
 };
 
