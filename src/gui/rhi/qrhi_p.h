@@ -76,6 +76,7 @@ public:
     virtual QRhi::FrameOpResult endOffscreenFrame(QRhi::EndFrameFlags flags) = 0;
     virtual QRhi::FrameOpResult finish() = 0;
     virtual bool isLastFrameCompletedOnGPU();
+    virtual bool isOneButLastFrameCompletedOnGPU();
 
     virtual void resourceUpdate(QRhiCommandBuffer *cb, QRhiResourceUpdateBatch *resourceUpdates) = 0;
 
