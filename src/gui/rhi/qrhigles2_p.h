@@ -804,6 +804,7 @@ public:
     QRhi::FrameOpResult endOffscreenFrame(QRhi::EndFrameFlags flags) override;
     QRhi::FrameOpResult finish() override;
     bool isLastFrameCompletedOnGPU() override;
+    bool isOneButLastFrameCompletedOnGPU() override;
 
     void resourceUpdate(QRhiCommandBuffer *cb, QRhiResourceUpdateBatch *resourceUpdates) override;
 
@@ -937,6 +938,7 @@ public:
                                                       QByteArray *cacheKey);
     void trySaveToDiskCache(GLuint program, const QByteArray &cacheKey);
     void trySaveToPipelineCache(GLuint program, const QByteArray &cacheKey, bool force = false);
+    bool isLastFrameCompletedOnGPUImpl(int frameIndex);
 
     QRhi::Flags rhiFlags;
     QOpenGLContext *ctx = nullptr;
@@ -1180,11 +1182,12 @@ public:
 
     struct SyncObject {
         SyncObject(QRhiGles2 *impl);
+        SyncObject(SyncObject &&rhs);
         ~SyncObject();
 
-        SyncObject& operator=(SyncObject &&rhs) = delete;
+        SyncObject& operator=(SyncObject &&rhs);
         SyncObject& operator=(const SyncObject &rhs) = delete;
-        
+
         bool hasOnceSignaled() const;
         bool isSignaled() const;
 
@@ -1194,7 +1197,7 @@ public:
         mutable bool m_hasOnceSignaled = false;
     };
 
-    std::optional<SyncObject> m_frameSyncObject;
+    std::array<std::optional<SyncObject>, 2> m_frameSyncObject;
 };
 
 Q_DECLARE_TYPEINFO(QRhiGles2::DeferredReleaseEntry, Q_RELOCATABLE_TYPE);

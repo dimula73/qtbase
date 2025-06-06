@@ -2014,6 +2014,7 @@ public:
     bool isRecordingFrame() const;
     int currentFrameSlot() const;
     bool isLastFrameCompletedOnGPU() const;
+    bool isOneButLastFrameCompletedOnGPU() const;
 
     FrameOpResult beginOffscreenFrame(QRhiCommandBuffer **cb, BeginFrameFlags flags = {});
     FrameOpResult endOffscreenFrame(EndFrameFlags flags = {});
