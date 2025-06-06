@@ -2418,7 +2418,11 @@ QRhi::FrameOpResult QRhiGles2::endFrame(QRhiSwapChain *swapChain, QRhi::EndFrame
     executeCommandBuffer(&swapChainD->cb);
 
     if (rhiFlags.testFlags(QRhi::EnableFrameCompletionStatus)) {
-        m_frameSyncObject.emplace(this);
+        if (m_frameSyncObject[0]) {
+            m_frameSyncObject[1].swap(m_frameSyncObject[0]);
+        }
+
+        m_frameSyncObject[0].emplace(this);
     }
 
     if (swapChainD->surface && !flags.testFlag(QRhi::SkipPresent)) {
@@ -2516,20 +2520,33 @@ QRhi::FrameOpResult QRhiGles2::finish()
     return QRhi::FrameOpSuccess;
 }
 
-bool QRhiGles2::isLastFrameCompletedOnGPU()
+bool QRhiGles2::isLastFrameCompletedOnGPUImpl(int frameIndex) 
 {
     // check if no frame has been stared yet
-    if (!m_frameSyncObject) return true;
-    
+    if (!m_frameSyncObject[frameIndex]) return true;
+
     // check for the cached value to avoid context switching
-    if (m_frameSyncObject->hasOnceSignaled()) return true;
+    if (m_frameSyncObject[frameIndex]->hasOnceSignaled()) return true;
 
     if (!ensureContext()) {
-        qWarning() << "QRhiGles2::isLastFrameCompletedOnGPU(): failed to activate context";
+        qWarning() << "QRhiGles2::isLastFrameCompletedOnGPUImpl(): failed to activate context";
         return true;
     }
 
-    return m_frameSyncObject->isSignaled();
+    return m_frameSyncObject[frameIndex]->isSignaled();
+}
+
+bool QRhiGles2::isLastFrameCompletedOnGPU()
+{
+    // m_frameSyncObject[0] is the object for the "last frame"
+    // m_frameSyncObject[1] is the object for the "one but last frame"
+    return isLastFrameCompletedOnGPUImpl(0);
+}
+
+bool QRhiGles2::isOneButLastFrameCompletedOnGPU()
+{
+    // \see a comment in isLastFrameCompletedOnGPU()
+    return isLastFrameCompletedOnGPUImpl(1);
 }
 
 static bool bufferAccessIsWrite(QGles2Buffer::Access access)
@@ -7063,10 +7080,35 @@ QRhiGles2::SyncObject::SyncObject(QRhiGles2 *impl)
     }
 }
 
+QRhiGles2::SyncObject::SyncObject(SyncObject &&rhs)
+{
+    m_impl = rhs.m_impl;
+    m_sync = rhs.m_sync;
+    m_hasOnceSignaled = rhs.m_hasOnceSignaled;
+
+    rhs.m_sync = 0;
+}
+
 QRhiGles2::SyncObject::~SyncObject()
 {
-    Q_ASSERT(m_sync);
-    m_impl->glDeleteSync(m_sync);
+    if (m_sync) {
+        m_impl->glDeleteSync(m_sync);
+    }
+}
+
+QRhiGles2::SyncObject &QRhiGles2::SyncObject::operator=(SyncObject &&rhs)
+{
+    if (m_sync) {
+        m_impl->glDeleteSync(m_sync);
+    }
+
+    m_impl = rhs.m_impl;
+    m_sync = rhs.m_sync;
+    m_hasOnceSignaled = rhs.m_hasOnceSignaled;
+
+    rhs.m_sync = 0;
+
+    return *this;
 }
 
 bool QRhiGles2::SyncObject::hasOnceSignaled() const
