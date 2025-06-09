@@ -4,6 +4,7 @@
 #include "qrhigles2_p.h"
 #include <QOffscreenSurface>
 #include <QOpenGLContext>
+#include <QtCore/private/qmeasureavgportion_p.h>
 #include <QtCore/qmap.h>
 #include <QtGui/private/qguiapplication_p.h>
 #include <QtGui/private/qopenglextensions_p.h>
@@ -2397,6 +2398,20 @@ QRhi::FrameOpResult QRhiGles2::beginFrame(QRhiSwapChain *swapChain, QRhi::BeginF
     return QRhi::FrameOpSuccess;
 }
 
+QDebug operator<<(QDebug dbg, const TestUtil::TagWrapper<QRhiSwapChain *> &t)
+{
+    if (qApp) {
+        auto window = dynamic_cast<QWindow*>(t.tag->window());
+        dbg.nospace() << window;
+    } else {
+        dbg.nospace() << "<deleted>";
+    }
+
+    return dbg.space();
+}
+
+static TestUtil::PerObjectMetric<QRhiSwapChain*> s_RhiGles2Counter(240);
+
 QRhi::FrameOpResult QRhiGles2::endFrame(QRhiSwapChain *swapChain, QRhi::EndFrameFlags flags)
 {
     QGles2SwapChain *swapChainD = QRHI_RES(QGles2SwapChain, swapChain);
@@ -2415,6 +2430,11 @@ QRhi::FrameOpResult QRhiGles2::endFrame(QRhiSwapChain *swapChain, QRhi::EndFrame
     if (!ensureContext(swapChainD->surface))
         return contextLost ? QRhi::FrameOpDeviceLost : QRhi::FrameOpError;
 
+    static int enableDebugForFrameResnderingTimes = qEnvironmentVariableIntValue("QT_ENABLE_FPS_STAT");
+
+    if (enableDebugForFrameResnderingTimes)
+        s_RhiGles2Counter.startFrame(swapChain);
+
     executeCommandBuffer(&swapChainD->cb);
 
     if (rhiFlags.testFlags(QRhi::EnableFrameCompletionStatus)) {
@@ -2431,6 +2451,9 @@ QRhi::FrameOpResult QRhiGles2::endFrame(QRhiSwapChain *swapChain, QRhi::EndFrame
     } else {
         f->glFlush();
     }
+
+    if (enableDebugForFrameResnderingTimes)
+        s_RhiGles2Counter.endFrame(swapChain);
 
     currentSwapChain = nullptr;
 
