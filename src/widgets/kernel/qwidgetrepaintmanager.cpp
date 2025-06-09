@@ -455,7 +455,32 @@ void QWidgetRepaintManager::slotCompressedUpdate()
 
         const bool flushWithRhi = widget->d_func()->usesRhiFlush;
         if (flushWithRhi) {
-            if (!store->handle()->rhi(window)->isOneButLastFrameCompletedOnGPU()) {
+            static int frameCompressionMode = -1;
+            if (frameCompressionMode < 0) {
+                frameCompressionMode = qEnvironmentVariableIntValue("QT_FRAME_COMPRESSION_MODE");
+                if (frameCompressionMode == 0) {
+                    qDebug() << "FPS-DEBUG: Frame compression mode: two frames (default)";
+                } else if (frameCompressionMode == 1) {
+                    qDebug() << "FPS-DEBUG: Frame compression mode: single frame";
+                } else if (frameCompressionMode == 2) {
+                    qDebug() << "FPS-DEBUG: Frame compression mode: no compression";
+                } else {
+                    qWarning() << "FPS-DEBUG: Unknown frame compression mode, switching to \"two frames\" mode";
+                    frameCompressionMode = 0;
+                }
+            }
+
+            const bool shouldCompress = [&] () {
+                if (frameCompressionMode == 2) {
+                    return false;
+                } else if (frameCompressionMode == 1) {
+                    return !store->handle()->rhi(window)->isLastFrameCompletedOnGPU();
+                } else {
+                    return !store->handle()->rhi(window)->isOneButLastFrameCompletedOnGPU();
+                }
+            }();
+
+            if (shouldCompress) {
 #ifdef DEBUG_FRAME_COMPRESSION
                 skippedRepaints++;
 #endif
