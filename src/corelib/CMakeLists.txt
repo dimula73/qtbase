@@ -203,6 +203,7 @@ qt_internal_add_module(Core
         kernel/qtranslator.cpp kernel/qtranslator.h kernel/qtranslator_p.h
         kernel/qvariant.cpp kernel/qvariant.h kernel/qvariant_p.h
         kernel/qvariantmap.h kernel/qvarianthash.h kernel/qvariantlist.h
+        kernel/qmeasureavgportion_p.h
         plugin/qfactoryinterface.cpp plugin/qfactoryinterface.h
         plugin/qfactoryloader.cpp plugin/qfactoryloader_p.h
         plugin/qplugin.h plugin/qplugin_p.h
