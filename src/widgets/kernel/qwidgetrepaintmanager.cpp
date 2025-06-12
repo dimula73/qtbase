@@ -117,6 +117,16 @@ void QWidgetRepaintManager::slotUpdateScreenRefreshRate()
                 updateCompressor, [this] (qreal) {this->slotUpdateScreenRefreshRate();}));
     }
 
+    if (qEnvironmentVariableIsSet("QT_FRAME_RATE_OVERRIDE")) {
+        const int refreshRateOverride = qEnvironmentVariableIntValue("QT_FRAME_RATE_OVERRIDE");
+        if (refreshRateOverride > 10) {
+            qCWarning(lcWidgetPainting)
+                << "QWidgetRepaintManager: refresh rate has been overridden to "
+                << refreshRateOverride << "fps (detected display rate was:" << maxRefreshRate << "fps)";
+            maxRefreshRate = refreshRateOverride;
+        }
+    }
+
     qCInfo(lcWidgetPainting) << "QWidgetRepaintManager: Selecting screen refresh rate" << maxRefreshRate << "fps";
 
     // we must use qFloor() instead of qRound() to make sure the update rate
