@@ -5,6 +5,7 @@
 #include "qfusionstyle_p.h"
 #include "qfusionstyle_p_p.h"
 
+#include <qcache.h>
 #if QT_CONFIG(style_fusion) || defined(QT_PLUGIN)
 #include "qcommonstyle_p.h"
 #if QT_CONFIG(combobox)
@@ -93,6 +94,27 @@ static const char * const qt_titlebar_context_help[] = {
     "    ##    ",
     "    ##    "};
 #endif // QT_CONFIG(imageformat_xpm)
+
+
+static void qt_cleanup_fusion_icon_cache();
+namespace {
+    struct FusionIconCache : public QCache<QString, QIcon>
+    {
+        FusionIconCache()
+        {
+            // ### note: won't readd if QApplication is re-created!
+            qAddPostRoutine(qt_cleanup_fusion_icon_cache);
+        }
+    };
+}
+
+Q_GLOBAL_STATIC(FusionIconCache, qtFusionIconCache)
+
+static void qt_cleanup_fusion_icon_cache()
+{
+    qtFusionIconCache()->clear();
+}
+
 
 static QColor mergedColors(const QColor &colorA, const QColor &colorB, int factor = 50)
 {
@@ -3330,6 +3352,26 @@ QRect QFusionStyle::subElementRect(SubElement sr, const QStyleOption *opt, const
 */
 QIcon QFusionStyle::iconFromTheme(StandardPixmap standardIcon) const
 {
+    QString iconPrefix;
+
+    switch (standardIcon) {
+        case SP_TitleBarNormalButton:
+            iconPrefix = QString::fromUtf16(u"fusion_normalizedockup-");
+          break;
+        case SP_TitleBarMinButton:
+            iconPrefix = QString::fromUtf16(u"fusion_titlebar-min-");
+            break;
+        case SP_TitleBarCloseButton:
+        case SP_DockWidgetCloseButton:
+            iconPrefix = QString::fromUtf16(u"fusion_closedock-");
+            break;
+        default:
+            break;
+    }
+
+    if (QIcon *cachedIcon = qtFusionIconCache()->object(iconPrefix))
+        return *cachedIcon;
+
     QIcon icon;
 #if QT_CONFIG(imageformat_png)
     auto addIconFiles = [](QStringView prefix, QIcon &icon)
@@ -3340,23 +3382,17 @@ QIcon QFusionStyle::iconFromTheme(StandardPixmap standardIcon) const
             icon.addFile(fullPrefix + QString::number(size) + QStringLiteral(".png"),
                          QSize(size, size));
     };
-    switch (standardIcon) {
-    case SP_TitleBarNormalButton:
-        addIconFiles(u"fusion_normalizedockup-", icon);
-      break;
-    case SP_TitleBarMinButton:
-        addIconFiles(u"fusion_titlebar-min-", icon);
-        break;
-    case SP_TitleBarCloseButton:
-    case SP_DockWidgetCloseButton:
-        addIconFiles(u"fusion_closedock-", icon);
-        break;
-    default:
-        break;
+
+    if (!iconPrefix.isEmpty()) {
+        addIconFiles(iconPrefix, icon);
     }
 #else  // imageformat_png
     Q_UNUSED(standardIcon);
 #endif // imageformat_png
+
+    if (!icon.isNull())
+        qtFusionIconCache()->insert(iconPrefix, new QIcon(icon));
+
     return icon;
 }
 
