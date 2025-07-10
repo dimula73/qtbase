@@ -139,6 +139,9 @@ public:
     bool asyncExpose() const;
     void setAsyncExpose(bool value);
 
+    bool usePrematureResizeEvents() const;
+    void setUsePrematureResizeEvents(bool value);
+
     static void forceNcCalcSize(HWND hwnd);
 
     static bool systemParametersInfo(unsigned action, unsigned param, void *out, unsigned dpi = 0);

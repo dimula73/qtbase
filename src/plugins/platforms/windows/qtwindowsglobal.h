@@ -97,6 +97,7 @@ enum WindowsEventType // Simplify event types
     GeometryChangingEvent = WindowEventFlag + 10,
     MoveEvent = WindowEventFlag + 11,
     ResizeEvent = WindowEventFlag + 12,
+    ResizingEvent = WindowEventFlag + 29,
     QuerySizeHints = WindowEventFlag + 15,
     CalculateSize = WindowEventFlag + 16,
     FocusInEvent = WindowEventFlag + 17,
@@ -211,6 +212,8 @@ inline QtWindows::WindowsEventType windowsEventType(UINT message, WPARAM wParamI
         return QtWindows::HideEvent;
     case WM_SIZE:
         return QtWindows::ResizeEvent;
+    case WM_SIZING:
+        return QtWindows::ResizingEvent;
     case WM_NCCREATE:
         return QtWindows::NonClientCreate;
     case WM_NCCALCSIZE:
