@@ -864,6 +864,21 @@ void QWidgetWindow::handleMoveEvent(QMoveEvent *event)
 
 void QWidgetWindow::handleResizeEvent(QResizeEvent *event)
 {
+    Q_D(QWidgetWindow);
+
+    if (m_widget->d_func()->prefillRhiSurface) {
+        /**
+         * For modal dialogs we can receive resizes before the widget has actually been
+         * exposed. In such a case we should clear the internal texture with the background
+         * color
+         */
+        if (!d->receivedExpose && m_widget->backingStore()
+            && m_widget->backingStore()->handle()->rhi(this)) {
+            const QColor clearColor = m_widget->palette().color(m_widget->backgroundRole());
+            m_widget->backingStore()->handle()->rhiClear(this, clearColor);
+        }
+    }
+
     auto oldRect = m_widget->rect();
 
     if (updateSize()) {

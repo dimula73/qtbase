@@ -158,6 +158,9 @@ public:
                                  bool translucentBackground,
                                  qreal sourceTransformFactor = 0);
 
+    virtual FlushResult rhiClear(QWindow *window,
+                                 const QColor &clearColor);
+
     virtual QImage toImage() const;
 
     enum TextureFlag {
