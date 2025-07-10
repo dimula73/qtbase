@@ -235,6 +235,16 @@ QPlatformBackingStore::FlushResult QPlatformBackingStore::rhiFlush(QWindow *wind
         translucentBackground, sourceTransformFactor);
 }
 
+QPlatformBackingStore::FlushResult QPlatformBackingStore::rhiClear(QWindow *window, const QColor &clearColor)
+{
+    auto &surfaceSupport = d_ptr->surfaceSupport[window->surfaceType()];
+    return surfaceSupport.compositor.clearSurface(
+        surfaceSupport.rhiSupport.rhi(),
+        surfaceSupport.rhiSupport.swapChainForWindow(window),
+        window,
+        clearColor);
+}
+
 /*!
   Implemented in subclasses to return the content of the backingstore as a QImage.
 
