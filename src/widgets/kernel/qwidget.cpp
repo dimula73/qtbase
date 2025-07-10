@@ -110,6 +110,8 @@ extern bool qt_sendSpontaneousEvent(QObject*, QEvent*); // qapplication.cpp
 static void setAttribute_internal(Qt::WidgetAttribute attribute,
     bool on, QWidgetData *data, QWidgetPrivate *d);
 
+int QWidgetPrivate::prefillRhiSurface = -1;
+
 QWidgetPrivate::QWidgetPrivate(decltype(QObjectPrivateVersion) version)
     : QObjectPrivate(version)
       , focus_next(nullptr)
@@ -180,6 +182,11 @@ QWidgetPrivate::QWidgetPrivate(decltype(QObjectPrivateVersion) version)
     static int count = 0;
     qDebug() << "widgets" << ++count;
 #endif
+
+    if (prefillRhiSurface < 0) {
+        prefillRhiSurface = qEnvironmentVariableIntValue("QT_PREFILL_RHI_SURFACE");
+        qInfo() << "INFO: prefill qrhi surface:" << prefillRhiSurface;
+    }
 }
 
 
@@ -1393,6 +1400,11 @@ void QWidgetPrivate::create()
         // Trigger creation of support infrastructure up front,
         // now that we have a specific RHI configuration.
         q->backingStore()->handle()->createRhi(win, rhiConfig);
+
+        if (prefillRhiSurface) {
+            const QColor clearColor = q->palette().color(q->backgroundRole());
+            q->backingStore()->handle()->rhiClear(win, clearColor);
+        }
     }
 
     setWindowModified_helper();

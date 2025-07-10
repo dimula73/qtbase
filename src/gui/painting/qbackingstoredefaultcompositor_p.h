@@ -44,6 +44,11 @@ public:
                                              bool translucentBackground,
                                              qreal sourceTransformFactor);
 
+    QPlatformBackingStore::FlushResult clearSurface(QRhi *rhi,
+                                                    QRhiSwapChain *swapchain,
+                                                    QWindow *window,
+                                                    const QColor &clearColor);
+
 private:
     enum class PipelineBlend {
         None,
