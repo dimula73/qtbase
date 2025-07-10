@@ -784,6 +784,8 @@ public:
     bool stealKeyboardGrab(bool grab);
     bool stealMouseGrab(bool grab);
     bool hasChildWithFocusPolicy(Qt::FocusPolicy policy, const QWidget *excludeChildrenOf = nullptr) const;
+
+    static int prefillRhiSurface;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(QWidgetPrivate::DrawWidgetFlags)
