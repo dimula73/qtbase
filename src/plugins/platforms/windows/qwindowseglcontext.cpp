@@ -161,6 +161,7 @@ bool QWindowsLibEGL::init()
     RESOLVE(eglSwapBuffers);
     RESOLVE(eglQueryString);
     RESOLVE(eglWaitNative);
+    RESOLVE(eglSurfaceAttrib);
     RESOLVE(eglGetProcAddress);
 
     if (!eglGetError || !eglGetDisplay || !eglInitialize || !eglGetProcAddress || !eglQueryString)
@@ -213,7 +214,8 @@ QWindowsEGLStaticContext::QWindowsEGLStaticContext(EGLDisplay display, bool isYU
       m_hasSCRGBColorSpaceSupport(false),
       m_hasBt2020PQColorSpaceSupport(false),
       m_hasPixelFormatFloatSupport(false),
-      m_isYUpInNDC(isYUpInNDC)
+      m_isYUpInNDC(isYUpInNDC),
+      m_manuallyUpdateSurfaceSize(false)
 {
     m_hasSRGBColorSpaceSupport = q_hasEglExtension(display, "EGL_KHR_gl_colorspace", eglConfigFunctions.get());
     m_hasSCRGBColorSpaceSupport = q_hasEglExtension(display, "EGL_EXT_gl_colorspace_scrgb_linear", eglConfigFunctions.get());
@@ -224,6 +226,10 @@ QWindowsEGLStaticContext::QWindowsEGLStaticContext(EGLDisplay display, bool isYU
                  "not available!", __FUNCTION__);
         m_hasSCRGBColorSpaceSupport = false;
     }
+#ifdef EGL_ANGLE_platform_angle
+    m_manuallyUpdateSurfaceSize = qEnvironmentVariableIntValue("QT_ANGLE_MANUALLY_UPDATE_SURFACE_SIZE");
+    qInfo() << "INFO: manually update surface size:" << m_manuallyUpdateSurfaceSize;
+#endif
 }
 
 bool QWindowsEGLStaticContext::initializeAngle(QWindowsOpenGLTester::Renderers preferredType,
@@ -390,7 +396,7 @@ QWindowsOpenGLContext *QWindowsEGLStaticContext::createContext(EGLContext contex
 }
 
 void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *nativeConfig,
-                                                    const QColorSpace &colorSpace, int *err)
+                                                    const QColorSpace &colorSpace, const QSize &size, int *err)
 {
     *err = 0;
 
@@ -420,6 +426,17 @@ void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *na
         attributes.emplace_back(EGL_SURFACE_ORIENTATION_INVERT_Y_ANGLE);
     }
 
+#ifdef EGL_ANGLE_platform_angle
+    if (m_manuallyUpdateSurfaceSize) {
+        attributes.emplace_back(EGL_FIXED_SIZE_ANGLE);
+        attributes.emplace_back(EGL_TRUE);
+        attributes.emplace_back(EGL_WIDTH);
+        attributes.emplace_back(size.width());
+        attributes.emplace_back(EGL_HEIGHT);
+        attributes.emplace_back(size.height());
+    }
+#endif
+
     attributes.emplace_back(EGL_NONE);
 
     if (!colorSpaceSupported && colorSpace.isValid())
@@ -443,6 +460,16 @@ void *QWindowsEGLStaticContext::createWindowSurface(void *nativeWindow, void *na
 void QWindowsEGLStaticContext::destroyWindowSurface(void *nativeSurface)
 {
     libEGL.eglDestroySurface(m_display, nativeSurface);
+}
+
+void QWindowsEGLStaticContext::updateWindowSurfaceSize(void * nativeSurface, const QSize & size)
+{
+#ifdef EGL_ANGLE_platform_angle
+    if (m_manuallyUpdateSurfaceSize) {
+        libEGL.eglSurfaceAttrib(m_display, nativeSurface, EGL_WIDTH, size.width());
+        libEGL.eglSurfaceAttrib(m_display, nativeSurface, EGL_HEIGHT, size.height());
+    }
+#endif
 }
 
 /*!
