@@ -47,6 +47,7 @@ struct QWindowsLibEGL
     const char *(EGLAPIENTRY *eglQueryString)(EGLDisplay dpy, EGLint name);
     QFunctionPointer(EGLAPIENTRY *eglGetProcAddress)(const char *procname);
     EGLBoolean (EGLAPIENTRY * eglWaitNative)(EGLint engine);
+    EGLBoolean (EGLAPIENTRY * eglSurfaceAttrib)(EGLDisplay display, EGLSurface surface, EGLint attribute, EGLint value);
 
     EGLDisplay(EGLAPIENTRY *eglGetPlatformDisplayEXT)(EGLenum platform, void *native_display,
                                                       const EGLint *attrib_list);
@@ -95,8 +96,10 @@ public:
     QOpenGLContext::OpenGLModuleType moduleType() const override { return QOpenGLContext::LibGLES; }
 
     void *createWindowSurface(void *nativeWindow, void *nativeConfig, const QColorSpace &colorSpace,
+                              const QSize &size,
                               int *err) override;
     void destroyWindowSurface(void *nativeSurface) override;
+    void updateWindowSurfaceSize(void * nativeSurface, const QSize & size) override;
 
     QSurfaceFormat formatFromConfig(EGLDisplay display, EGLConfig config,
                                     const QSurfaceFormat &referenceFormat);
@@ -120,6 +123,7 @@ private:
     bool m_hasBt2020PQColorSpaceSupport;
     bool m_hasPixelFormatFloatSupport;
     bool m_isYUpInNDC;
+    bool m_manuallyUpdateSurfaceSize;
 };
 
 class QWindowsEGLContext : public QWindowsOpenGLContext, public QNativeInterface::QEGLContext

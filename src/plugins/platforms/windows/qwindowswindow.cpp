@@ -2390,11 +2390,27 @@ void QWindowsWindow::checkForScreenChanged(ScreenChangeMode mode, const RECT *su
     QWindowSystemInterface::handleWindowScreenChanged<QWindowSystemInterface::SynchronousDelivery>(window(), newScreen->screen());
 }
 
-void QWindowsWindow::handleGeometryChange()
+void QWindowsWindow::handleGeometryChange(std::optional<QRect> newWindowRect)
 {
     const QRect previousGeometry = m_data.geometry;
-    m_data.geometry = geometry_sys();
     updateFullFrameMargins();
+
+    /**
+     * geometry_sys() is using the result from fullFrameMargins()
+     * and the latter is calculated by calculateFullFrameMargins(),
+     * which is called by updateFullFrameMargins(), so we need to
+     * update the full frame margins first and then call geometry_sys()
+     * to get the latest and correct geometry.
+     */
+    m_data.geometry = newWindowRect.has_value() ? *newWindowRect : geometry_sys();
+
+    if (m_surface) {
+        if (QWindowsStaticOpenGLContext *staticOpenGLContext =
+                    QWindowsIntegration::staticOpenGLContext()) {
+            staticOpenGLContext->updateWindowSurfaceSize(m_surface, m_data.geometry.size());
+        }
+    }
+
     QWindowSystemInterface::handleGeometryChange(window(), m_data.geometry);
     // QTBUG-32121: OpenGL/normal windows (with exception of ANGLE
     // which we no longer support in Qt 6) do not receive expose
@@ -2423,6 +2439,11 @@ void QWindowsWindow::handleGeometryChange()
         const int titleBarHeight = getTitleBarHeight_sys(savedDpi());
         MoveWindow(m_data.hwndTitlebar, 0, 0, m_data.geometry.width(), titleBarHeight, true);
     }
+}
+
+void QWindowsWindow::handleGeometryChange()
+{
+    handleGeometryChange(std::nullopt);
 }
 
 void QWindowsBaseWindow::setGeometry_sys(const QRect &rect) const
@@ -3917,9 +3938,12 @@ void *QWindowsWindow::surface(void *nativeConfig, int *err)
 #ifndef QT_NO_OPENGL
     if (!m_surface) {
         if (QWindowsStaticOpenGLContext *staticOpenGLContext =
-                    QWindowsIntegration::staticOpenGLContext())
+                    QWindowsIntegration::staticOpenGLContext()) {
             m_surface = staticOpenGLContext->createWindowSurface(
-                    m_data.hwnd, nativeConfig, window()->requestedFormat().colorSpace(), err);
+                    m_data.hwnd, nativeConfig, window()->requestedFormat().colorSpace(),
+                    m_data.geometry.size(),
+                    err);
+        }
     }
 
     return m_surface;
