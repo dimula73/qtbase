@@ -531,6 +531,63 @@ QRhiGraphicsPipeline *QBackingStoreDefaultCompositor::ensurePipeline(
     return pipelineStorage[pipelineIndex].get();
 }
 
+QPlatformBackingStore::FlushResult
+QBackingStoreDefaultCompositor::clearSurface(QRhi *rhi,
+                                             QRhiSwapChain *swapchain, QWindow *window,
+                                             const QColor &clearColor)
+{
+    if (!rhi)
+        return QPlatformBackingStore::FlushFailed;
+
+    if (!m_rhi) {
+        m_rhi = rhi;
+    } else if (m_rhi != rhi) {
+        qWarning("QBackingStoreDefaultCompositor: the QRhi has changed unexpectedly, this should not happen");
+        return QPlatformBackingStore::FlushFailed;
+    }
+
+    QWindowPrivate::get(window)->lastComposeTime.start();
+
+    if (swapchain->currentPixelSize() != swapchain->surfacePixelSize())
+        swapchain->createOrResize();
+
+    // Start recording a new frame.
+    QRhi::FrameOpResult frameResult = rhi->beginFrame(swapchain);
+    if (frameResult == QRhi::FrameOpSwapChainOutOfDate) {
+        if (!swapchain->createOrResize())
+            return QPlatformBackingStore::FlushFailed;
+        frameResult = rhi->beginFrame(swapchain);
+    }
+    if (frameResult == QRhi::FrameOpDeviceLost)
+        return QPlatformBackingStore::FlushFailedDueToLostDevice;
+    if (frameResult != QRhi::FrameOpSuccess)
+        return QPlatformBackingStore::FlushFailed;
+
+    // Record the render pass (with committing the resource updates).
+    QRhiCommandBuffer *cb = swapchain->currentFrameCommandBuffer();
+
+    auto render = [&](std::optional<QRhiSwapChain::StereoTargetBuffer> buffer = std::nullopt) {
+        QRhiRenderTarget* target = nullptr;
+        if (buffer.has_value())
+            target = swapchain->currentFrameRenderTarget(buffer.value());
+        else
+            target = swapchain->currentFrameRenderTarget();
+
+        cb->beginPass(target, clearColor, { 1.0f, 0 });
+        cb->endPass();
+    };
+
+    if (swapchain->window()->format().stereo()) {
+        render(QRhiSwapChain::LeftBuffer);
+        render(QRhiSwapChain::RightBuffer);
+    } else
+        render();
+
+    rhi->endFrame(swapchain);
+
+    return QPlatformBackingStore::FlushSuccess;
+}
+
 QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatformBackingStore *backingStore,
                                                                          QRhi *rhi,
                                                                          QRhiSwapChain *swapchain,
