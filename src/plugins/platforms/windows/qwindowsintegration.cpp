@@ -225,6 +225,10 @@ void QWindowsIntegrationPrivate::parseOptions(QWindowsIntegration *q, const QStr
     QPlatformCursor::setCapability(QPlatformCursor::OverrideCursor);
 
     m_context.initPowerNotificationHandler();
+
+    const bool value = qEnvironmentVariableIntValue("QT_USE_PREMATURE_RESIZE_EVENTS") > 0;
+    qInfo() << "INFO: use premature resize events:" << value;
+    m_context.setUsePrematureResizeEvents(value);
 }
 
 QWindowsIntegrationPrivate::~QWindowsIntegrationPrivate()

@@ -2406,11 +2406,19 @@ void QWindowsWindow::checkForScreenChanged(ScreenChangeMode mode)
     QWindowSystemInterface::handleWindowScreenChanged<QWindowSystemInterface::SynchronousDelivery>(window(), newScreen->screen());
 }
 
-void QWindowsWindow::handleGeometryChange()
+void QWindowsWindow::handleGeometryChange(const QRect &newWindowRect)
 {
     const QRect previousGeometry = m_data.geometry;
-    m_data.geometry = geometry_sys();
+    m_data.geometry = newWindowRect;
     updateFullFrameMargins();
+
+    if (m_surface) {
+        if (QWindowsStaticOpenGLContext *staticOpenGLContext =
+                    QWindowsIntegration::staticOpenGLContext()) {
+            staticOpenGLContext->updateWindowSurfaceSize(m_surface, newWindowRect.size());
+        }
+    }
+
     QWindowSystemInterface::handleGeometryChange(window(), m_data.geometry);
     // QTBUG-32121: OpenGL/normal windows (with exception of ANGLE
     // which we no longer support in Qt 6) do not receive expose
@@ -2445,6 +2453,11 @@ void QWindowsWindow::handleGeometryChange()
                    m_data.geometry.width(), titleBarHeight, true);
         m_windowWasArranged = arranged;
     }
+}
+
+void QWindowsWindow::handleGeometryChange()
+{
+    handleGeometryChange(geometry_sys());
 }
 
 void QWindowsBaseWindow::setGeometry_sys(const QRect &rect) const
@@ -3940,9 +3953,12 @@ void *QWindowsWindow::surface(void *nativeConfig, int *err)
 #ifndef QT_NO_OPENGL
     if (!m_surface) {
         if (QWindowsStaticOpenGLContext *staticOpenGLContext =
-                    QWindowsIntegration::staticOpenGLContext())
+                    QWindowsIntegration::staticOpenGLContext()) {
             m_surface = staticOpenGLContext->createWindowSurface(
-                    m_data.hwnd, nativeConfig, window()->requestedFormat().colorSpace(), err);
+                    m_data.hwnd, nativeConfig, window()->requestedFormat().colorSpace(),
+                    m_data.geometry.size(),
+                    err);
+        }
     }
 
     return m_surface;

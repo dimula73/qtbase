@@ -297,6 +297,8 @@ public:
     void handleDpiScaledSize(WPARAM wParam, LPARAM lParam, LRESULT *result);
     void handleDpiChanged(HWND hwnd, WPARAM wParam, LPARAM lParam);
     void handleDpiChangedAfterParent(HWND hwnd);
+    void handleGeometryChange(const QRect &newWindowRect);
+    void handleGeometryChange();
 
     static void displayChanged();
     static void settingsChanged();
@@ -373,7 +375,6 @@ private:
     inline bool isDropSiteEnabled() const { return m_dropTarget != nullptr; }
     void setDropSiteEnabled(bool enabled);
     void updateDropSite(bool topLevel);
-    void handleGeometryChange();
     void handleWindowStateChange(Qt::WindowStates state);
     inline void destroyIcon();
     void fireExpose(const QRegion &region, bool force=false);

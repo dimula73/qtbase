@@ -28,11 +28,14 @@ public:
     // If the windowing system interface needs explicitly created window surfaces (like EGL),
     // reimplement these.
     virtual void *createWindowSurface(void * /*nativeWindow*/, void * /*nativeConfig*/,
-                                      const QColorSpace & /*colorSpace*/, int * /*err*/)
+                                      const QColorSpace & /*colorSpace*/,
+                                      const QSize &/*size*/,
+                                      int * /*err*/)
     {
         return nullptr;
     }
     virtual void destroyWindowSurface(void * /*nativeSurface*/) { }
+    virtual void updateWindowSurfaceSize(void * /*nativeSurface*/, const QSize & /*size*/) { }
 
 protected:
     QWindowsStaticOpenGLContext() = default;

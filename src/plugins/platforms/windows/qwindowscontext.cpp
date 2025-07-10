@@ -153,6 +153,7 @@ struct QWindowsContextPrivate {
     HPOWERNOTIFY m_powerNotification = nullptr;
     HWND m_powerDummyWindow = nullptr;
     static bool m_v2DpiAware;
+    bool usePrematureResizeEvents = false;
 };
 
 bool QWindowsContextPrivate::m_v2DpiAware = false;
@@ -973,6 +974,17 @@ static bool enableNonClientDpiScaling(HWND hwnd)
      \sa QWindowsGuiEventDispatcher
 */
 
+static inline QSize qSizeOfRect(const RECT &rect)
+{
+    return QSize(rect.right -rect.left, rect.bottom - rect.top);
+}
+
+static inline QRect qrectFromRECT(const RECT &rect)
+{
+    return QRect(QPoint(rect.left, rect.top), qSizeOfRect(rect));
+}
+
+
 bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
                                   QtWindows::WindowsEventType et,
                                   WPARAM wParam, LPARAM lParam,
@@ -1160,6 +1172,12 @@ bool QWindowsContext::windowsProc(HWND hwnd, UINT message,
         return true;
     case QtWindows::ResizeEvent:
         platformWindow->handleResized(static_cast<int>(wParam), lParam);
+        return true;
+    case QtWindows::ResizingEvent:
+        if (d->usePrematureResizeEvents) {
+            const QRect rc = qrectFromRECT(*reinterpret_cast<RECT*>(lParam));
+            platformWindow->handleGeometryChange(rc.marginsRemoved(platformWindow->fullFrameMargins()));
+        }
         return true;
     case QtWindows::QuerySizeHints:
         platformWindow->getSizeHints(reinterpret_cast<MINMAXINFO *>(lParam));
@@ -1449,6 +1467,16 @@ bool QWindowsContext::asyncExpose() const
 void QWindowsContext::setAsyncExpose(bool value)
 {
     d->m_asyncExpose = value;
+}
+
+bool QWindowsContext::usePrematureResizeEvents() const
+{
+    return d->usePrematureResizeEvents;
+}
+
+void QWindowsContext::setUsePrematureResizeEvents(bool value)
+{
+    d->usePrematureResizeEvents = value;
 }
 
 DWORD QWindowsContext::readAdvancedExplorerSettings(const wchar_t *subKey, DWORD defaultValue)
