@@ -6,7 +6,7 @@
 #include <string.h>
 #include <wayland-client-core.h>
 
-#include <wayland-egl.h>
+#include <wayland-egl-core.h>
 
 #define EGL_EGLEXT_PROTOTYPES
 #include <QtGui/private/qt_egl_p.h>

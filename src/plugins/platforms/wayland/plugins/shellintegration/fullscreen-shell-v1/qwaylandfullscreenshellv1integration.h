@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <wayland-client.h>
+#include <wayland-client-core.h>
 #include <QtWaylandClient/private/qwayland-wayland.h>
 #include <QtWaylandClient/private/qwaylandshellintegration_p.h>
 
