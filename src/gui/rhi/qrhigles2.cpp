@@ -2373,7 +2373,6 @@ QRhi::FrameOpResult QRhiGles2::endFrame(QRhiSwapChain *swapChain, QRhi::EndFrame
     if (enableDebugForFrameResnderingTimes)
         s_RhiGles2Counter.endFrame(swapChain);
 
-    swapChainD->frameCount += 1;
     currentSwapChain = nullptr;
 
     ctx->handle()->endFrame();
