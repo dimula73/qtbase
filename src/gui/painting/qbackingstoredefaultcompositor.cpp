@@ -779,8 +779,20 @@ QPlatformBackingStore::FlushResult QBackingStoreDefaultCompositor::flush(QPlatfo
         }
 
         {
+            QColorSpace colorSpaceForQWidgets = QColorSpace::SRgb;
+
+#ifdef Q_OS_MACOS
+            if (swapchain->format() == QRhiSwapChain::SDR) {
+                /**
+                 * For MacOS assume widgets are rendered in pass-through mode,
+                 * i.e. in the exact space of the display
+                 */
+                colorSpaceForQWidgets = window->format().colorSpace();
+            }
+#endif
+
             const qsizetype pipelineIndex = static_cast<qsizetype>(
-                    directionForColorSpaces(QColorSpace::SRgb, window->format().colorSpace()));
+                    directionForColorSpaces(colorSpaceForQWidgets, window->format().colorSpace()));
             cb->setGraphicsPipeline(ensurePipeline(
                     premultiplied ? PipelineBlend::PremulAlpha : PipelineBlend::Alpha,
                     swapchain->renderPassDescriptor(), pipelineIndex));
