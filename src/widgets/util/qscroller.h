@@ -15,6 +15,64 @@ QT_REQUIRE_CONFIG(scroller);
 
 QT_BEGIN_NAMESPACE
 
+#define KRITA_QSCROLLER_PATCH 1
+
+// Kinetic scrolling patch for Krita to allow widgets to handle both scrolling
+// via left-click and dragging stuff in the widget. Applications for this are
+// the layer list and the animation timeline.
+//
+// The way a widget uses this is by extending this class, implementing the
+// filterScroll member function and assigning an instance of that class to the
+// "kis_qscroller_filter" property of the widget that the scroller in question
+// is assigned to. It will be called if the user inputs a left click on the
+// widget and is used to stop a kinetic scroll from happening. For example. it
+// could prevent kinetic scrolling if the user pressed on a key frame of the
+// timeline, since that means they want to drag it instead.
+//
+// For example, a class like this:
+//
+//     class LeftHalfScrollerFilter : public KisQScrollerFilter {
+//         Q_OBJECT
+//     public:
+//         LeftHalfScrollerFilter(Qbject *parent)
+//             KisQScrollerFilter(parent)
+//         {
+//         }
+//
+//     protected:
+//         bool filterScroll(QWidget *w, const QPointF &point) override
+//         {
+//             // Block scrolling on the left half of the widget.
+//             return point.x() < w->width() / 2.0;
+//         }
+//     };
+//
+// Would be assigned like this (inside the scrolled widget):
+//
+//    setProperty("kis_qscroller_filter", new LeftHalfScrollerFilter(this));
+//
+// And then only the half side of that widget will trigger a kinetic scroll when
+// using left-click dragging, the left half can drag and drop instead.
+
+class Q_WIDGETS_EXPORT KisQScrollerFilter : public QObject {
+    Q_OBJECT
+public:
+    explicit KisQScrollerFilter(QObject *parent);
+
+    bool shouldFilterScroll(QWidget *w, const QPointF &point);
+
+    bool wasScrollFiltered() const
+    {
+        return m_wasScrollFiltered;
+    }
+
+protected:
+    virtual bool filterScroll(QWidget *w, const QPointF &point) = 0;
+
+private:
+    bool m_wasScrollFiltered = false;
+};
+
 
 class QWidget;
 class QScrollerPrivate;

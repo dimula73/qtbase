@@ -34,6 +34,15 @@ QT_BEGIN_NAMESPACE
 
 Q_STATIC_LOGGING_CATEGORY(lcScroller, "qt.widgets.scroller")
 
+KisQScrollerFilter::KisQScrollerFilter(QObject *parent) : QObject(parent) {}
+
+bool KisQScrollerFilter::shouldFilterScroll(QWidget *w, const QPointF &point)
+{
+    bool filtered = filterScroll(w, point);
+    m_wasScrollFiltered = filtered;
+    return filtered;
+}
+
 bool qt_sendSpontaneousEvent(QObject *receiver, QEvent *event);
 
 namespace {
