@@ -526,8 +526,18 @@ QGestureRecognizer::Result QFlickGestureRecognizer::recognize(QGesture *state,
     bool scrollerWasScrolling = (scroller->state() == QScroller::Scrolling);
 
     if (inputType) {
-        if (QWidget *w = qobject_cast<QWidget *>(d->receiver))
+        if (QWidget *w = qobject_cast<QWidget *>(d->receiver)) {
             point = w->mapFromGlobal(point.toPoint());
+            if (inputType == QScroller::InputPress && (button == Qt::NoButton || button == Qt::LeftButton)) {
+                QVariant filterVariant = w->property("kis_qscroller_filter");
+                if (filterVariant.isValid()) {
+                    KisQScrollerFilter *filter = filterVariant.value<KisQScrollerFilter *>();
+                    if (filter && filter->shouldFilterScroll(w, point)) {
+                        return Ignore;
+                    }
+                }
+            }
+        }
 #if QT_CONFIG(graphicsview)
         else if (QGraphicsObject *go = qobject_cast<QGraphicsObject *>(d->receiver))
             point = go->mapFromScene(point);
