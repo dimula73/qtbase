@@ -252,6 +252,8 @@ bool QWindowsContext::initTablet()
 {
 #if QT_CONFIG(tabletevent)
     d->m_tabletSupport.reset(QWindowsTabletSupport::create());
+    // WinTab synthesizes mouse events itself
+    QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(true);
     return true;
 #else
     return false;
@@ -262,6 +264,8 @@ bool QWindowsContext::disposeTablet()
 {
 #if QT_CONFIG(tabletevent)
     d->m_tabletSupport.reset();
+    // the alternative, WinInk doesn't synthesize mouse events
+    QWindowSystemInterfacePrivate::TabletEvent::setPlatformSynthesizesMouse(false);
     return true;
 #else
     return false;
