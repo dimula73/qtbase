@@ -342,6 +342,11 @@ void QWaylandCursor::pointerEvent(const QMouseEvent &event)
     mLastPos = event.globalPosition().toPoint();
 }
 
+void QWaylandCursor::pointerEvent(const QTabletEvent &event)
+{
+    mLastPos = event.globalPosition().toPoint();
+}
+
 QPoint QWaylandCursor::pos() const
 {
     return mLastPos;
