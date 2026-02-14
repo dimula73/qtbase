@@ -2983,6 +2983,24 @@ void QGuiApplicationPrivate::processTabletEvent(QWindowSystemInterfacePrivate::T
         return;
     }
 
+#ifndef QT_NO_CURSOR
+    if (const QScreen *screen = window->screen())
+        if (QPlatformCursor *cursor = screen->handle()->cursor()) {
+            const QPointF nativeLocalPoint = QHighDpi::toNativePixels(local, screen);
+            const QPointF nativeGlobalPoint = QHighDpi::toNativePixels(e->global, screen);
+
+            QTabletEvent tabletEvent(type, device, nativeLocalPoint, nativeGlobalPoint,
+                             e->pressure, e->xTilt, e->yTilt,
+                             e->tangentialPressure, e->rotation, e->z,
+                             e->modifiers, button, e->buttons);
+            // avoid incorrect velocity calculation: ev is in the native coordinate system,
+            // but we need to consistently use the logical coordinate system for velocity
+            // whenever QEventPoint::setTimestamp() is called
+            tabletEvent.QInputEvent::setTimestamp(e->timestamp);
+            cursor->pointerEvent(tabletEvent);
+        }
+#endif
+
     QTabletEvent tabletEvent(type, device, local, e->global,
                              e->pressure, e->xTilt, e->yTilt,
                              e->tangentialPressure, e->rotation, e->z,
