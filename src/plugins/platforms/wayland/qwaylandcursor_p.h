@@ -103,6 +103,7 @@ public:
 
     void changeCursor(QCursor *cursor, QWindow *window) override;
     void pointerEvent(const QMouseEvent &event) override;
+    void pointerEvent(const QTabletEvent &event) override;
     QPoint pos() const override;
     void setPos(const QPoint &pos) override;
     void setPosFromEnterEvent(const QPoint &pos);
