@@ -501,23 +501,120 @@ bool QGLXContext::makeCurrent(QPlatformSurface *surface)
 
     if (success && surfaceClass == QSurface::Window) {
         int interval = surface->format().swapInterval();
+
         QXcbWindow *window = static_cast<QXcbWindow *>(surface);
         QXcbScreen *screen = screenForPlatformSurface(surface);
-        if (interval >= 0 && interval != window->swapInterval() && screen) {
-            typedef void (*qt_glXSwapIntervalEXT)(Display *, GLXDrawable, int);
-            typedef void (*qt_glXSwapIntervalMESA)(unsigned int);
-            static qt_glXSwapIntervalEXT glXSwapIntervalEXT = nullptr;
-            static qt_glXSwapIntervalMESA glXSwapIntervalMESA = nullptr;
-            static bool resolved = false;
-            if (!resolved) {
-                resolved = true;
-                QList<QByteArray> glxExt = QByteArray(glXQueryExtensionsString(m_display,
-                                                                               screen->screenNumber())).split(' ');
-                if (glxExt.contains("GLX_EXT_swap_control"))
-                    glXSwapIntervalEXT = (qt_glXSwapIntervalEXT) getProcAddress("glXSwapIntervalEXT");
-                if (glxExt.contains("GLX_MESA_swap_control"))
-                    glXSwapIntervalMESA = (qt_glXSwapIntervalMESA) getProcAddress("glXSwapIntervalMESA");
+
+        typedef void (*qt_glXSwapIntervalEXT)(Display *, GLXDrawable, int);
+        typedef void (*qt_glXSwapIntervalMESA)(unsigned int);
+        typedef int (*qt_glXGetSwapIntervalMESA)(void);
+        static qt_glXSwapIntervalEXT glXSwapIntervalEXT = nullptr;
+        static qt_glXSwapIntervalMESA glXSwapIntervalMESA = nullptr;
+        static qt_glXGetSwapIntervalMESA glXGetSwapIntervalMESA = nullptr;
+        static bool resolved = false;
+        if (!resolved) {
+            resolved = true;
+            QList<QByteArray> glxExt =
+                    QByteArray(glXQueryExtensionsString(m_display, screen->screenNumber()))
+                            .split(' ');
+            if (glxExt.contains("GLX_EXT_swap_control"))
+                glXSwapIntervalEXT = (qt_glXSwapIntervalEXT)getProcAddress("glXSwapIntervalEXT");
+            if (glxExt.contains("GLX_MESA_swap_control")) {
+                glXSwapIntervalMESA = (qt_glXSwapIntervalMESA)getProcAddress("glXSwapIntervalMESA");
+                glXGetSwapIntervalMESA =
+                        (qt_glXGetSwapIntervalMESA)getProcAddress("glXGetSwapIntervalMESA");
             }
+        }
+
+        /**
+         * This implementation uses the legacy exception of GLX spec. It
+         * passes `xcb_window` as `GLXDrawable` to `glXMakeCurrent()`
+         * instead of `xcb_glx_window`. This is a backwards compatibility
+         * exception of the spec:
+         *
+         * <blockquote>
+         * For backwards compatibility with GLX versions 1.2 and earlier,
+         * a rendering context can also be used to render into a `Window`.
+         * Thus, a GLXDrawable is the union {GLXWindow, GLXPixmap, GLXPbuffer,
+         * Window}
+         * </blockquote>
+         *
+         * The swap interval exception (glXSwapIntervalEXT) is technically
+         * implemented against GLX 1.3, so it is not guaranteed to support
+         * this legacy mode.
+         *
+         * It worked for some time, but broke when Mesa started using DRI3.
+         * In this mode, Mesa automatically creates an implicit GLXWindow
+         * for the passed `xcb_window`, every time `xcb_window` is made
+         * current. It means, that the swap interval value is reset to
+         * default (default is defined by `vblank_mode` env variable) every
+         * time the surface is detached from a context and attached back.
+         *
+         * That basically means that we need to resynchronize the desired
+         * swap interval with the one currently set in the surface every
+         * time we make this surface current.
+         *
+         * The actual steps to reproduce are: have two native windows in an app,
+         * QML and QWidget one, set their swap interval to `0`. Every time the
+         * cursor transitions from one to another, the swap interval is reset
+         * to `1`.
+         *
+         * The proper solution to the problem would be to rewrite this file
+         * into using `xcb_glx_*` versions of the GLX functions and make sure
+         * that `QXcbGlxWindow` actually creates `xcb_glx_window`. This extra
+         * structure will force Mesa to store the desired swap interval in this
+         * structure and don't make any guesses.
+         */
+
+        static int enableSwapIntervalSyncWorkaround = -1;
+        if (enableSwapIntervalSyncWorkaround < 0) {
+            /**
+             * QT_GLX_SWAP_INTERVAL_SYNC_WORKAROUND controls the status of the swap
+             * interval sync workaround. Possible values are the following:
+             *
+             * 0 --- disable workaround unconditionally
+             * 1 --- "auto", the workaround is enabled for Mesa GLX implementation only
+             * 2 --- enable workaround unconditionally
+             */
+
+            bool ok = false;
+            enableSwapIntervalSyncWorkaround = qEnvironmentVariableIntValue("QT_GLX_SWAP_INTERVAL_SYNC_WORKAROUND", &ok);
+
+            if (!ok) {
+                // "auto" mode is the default
+                enableSwapIntervalSyncWorkaround = 1;
+            }
+
+            if (enableSwapIntervalSyncWorkaround <= 0) {
+                enableSwapIntervalSyncWorkaround = 0;
+                qWarning("QGLXContext: Disabled (force) swap interval synchronization for xcb_glx intergation plugin");
+            } else if (enableSwapIntervalSyncWorkaround == 1) {
+                const char *glxvendor = glXGetClientString(m_display, GLX_VENDOR);
+                if (strstr(glxvendor, "Mesa Project") != nullptr) {
+                    enableSwapIntervalSyncWorkaround = 1;
+                    qWarning("QGLXContext: Enabled (auto) swap interval synchronization for xcb_glx intergation plugin");
+                } else {
+                    enableSwapIntervalSyncWorkaround = 0;
+                    qWarning("QGLXContext: Disabled (auto) swap interval synchronization for xcb_glx intergation plugin");
+                }
+            } else {
+                enableSwapIntervalSyncWorkaround = 1;
+                qWarning("QGLXContext: Enabled (force) swap interval synchronization for xcb_glx intergation plugin");
+            }
+        }
+
+        int currentSwapInterval = window->swapInterval();
+        if (enableSwapIntervalSyncWorkaround > 0) {
+            if (glXSwapIntervalEXT) {
+                unsigned int swap = 0;
+                glXQueryDrawable(m_display, glxDrawable, GLX_SWAP_INTERVAL_EXT, &swap);
+                currentSwapInterval = swap;
+            } else if (glXGetSwapIntervalMESA) {
+                currentSwapInterval = glXGetSwapIntervalMESA();
+            }
+        }
+
+        if (interval >= 0 && interval != currentSwapInterval && screen) {
             if (glXSwapIntervalEXT)
                 glXSwapIntervalEXT(m_display, glxDrawable, interval);
             else if (glXSwapIntervalMESA)
