@@ -201,15 +201,19 @@ bool q_reduceConfigAttributes(QList<EGLint> *configAttributes)
 
     i = configAttributes->indexOf(EGL_ALPHA_SIZE);
     if (i >= 0) {
-        configAttributes->remove(i,2);
-#if defined(EGL_BIND_TO_TEXTURE_RGBA) && defined(EGL_BIND_TO_TEXTURE_RGB)
-        i = configAttributes->indexOf(EGL_BIND_TO_TEXTURE_RGBA);
-        if (i >= 0) {
-            configAttributes->replace(i,EGL_BIND_TO_TEXTURE_RGB);
-            configAttributes->replace(i+1,true);
+        if (configAttributes->at(i + 1) > 2) {
+            (*configAttributes)[i + 1] = 2;
+        } else {
+            configAttributes->remove(i,2);
+    #if defined(EGL_BIND_TO_TEXTURE_RGBA) && defined(EGL_BIND_TO_TEXTURE_RGB)
+            i = configAttributes->indexOf(EGL_BIND_TO_TEXTURE_RGBA);
+            if (i >= 0) {
+                configAttributes->replace(i,EGL_BIND_TO_TEXTURE_RGB);
+                configAttributes->replace(i+1,true);
 
+            }
+    #endif
         }
-#endif
         return true;
     }
 
