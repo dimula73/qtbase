@@ -187,7 +187,7 @@ QStringList QStandardPaths::standardLocations(StandardLocation type)
         }
     }
 
-    if (type == AppDataLocation || type == AppLocalDataLocation) {
+    if (type == AppDataLocation || type == AppLocalDataLocation || type == GenericDataLocation) {
         CFBundleRef mainBundle = CFBundleGetMainBundle();
         if (mainBundle) {
             if (QCFType<CFURLRef> resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle)) {
