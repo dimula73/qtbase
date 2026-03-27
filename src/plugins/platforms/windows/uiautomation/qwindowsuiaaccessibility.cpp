@@ -37,6 +37,9 @@ QWindowsUiaAccessibility::~QWindowsUiaAccessibility()
 // Handles UI Automation window messages.
 bool QWindowsUiaAccessibility::handleWmGetObject(HWND hwnd, WPARAM wParam, LPARAM lParam, LRESULT *lResult)
 {
+    static int disableAccessibility = qEnvironmentVariableIntValue("QT_DISABLE_ACCESSIBILITY");
+    if (disableAccessibility) return false;
+
     // Start handling accessibility internally
     QGuiApplicationPrivate::platformIntegration()->accessibility()->setActive(true);
     m_accessibleActive = true;
