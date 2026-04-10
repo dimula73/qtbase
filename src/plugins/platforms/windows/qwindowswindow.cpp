@@ -2403,7 +2403,7 @@ void QWindowsWindow::handleGeometryChange(std::optional<QRect> newWindowRect)
     if (m_surface) {
         if (QWindowsStaticOpenGLContext *staticOpenGLContext =
                     QWindowsIntegration::staticOpenGLContext()) {
-            staticOpenGLContext->updateWindowSurfaceSize(m_surface, newWindowRect.size());
+            staticOpenGLContext->updateWindowSurfaceSize(m_surface, m_data.geometry.size());
         }
     }
 
