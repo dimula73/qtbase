@@ -773,8 +773,25 @@ bool QFilePrivate::copy(const QString &newName)
 
     // Some file engines can perform this copy more efficiently (e.g., Windows
     // calling CopyFile).
-    if (engine()->copy(newName))
+    if (engine()->copy(newName)) {
+        /**
+         * Force copied file to be synched to disk, like we do it in
+         * alternative approach
+         */
+        QFile out(newName);
+        if (out.open(QIODevice::ReadWrite)) {
+            bool result = engine()->syncToDisk();
+            if (!result) {
+                qWarning("QIODevice::copy: Failed to sync file after copying");
+            }
+            out.close();
+        } else {
+            setError(QFile::CopyError, QFile::tr("Cannot open %1 for output").arg(newName));
+            return false;
+        }
+
         return true;
+    }
 
     if (!q->open(QFile::ReadOnly | QFile::Unbuffered)) {
         setError(QFile::CopyError, QFile::tr("Cannot open %1 for input").arg(fileName));
