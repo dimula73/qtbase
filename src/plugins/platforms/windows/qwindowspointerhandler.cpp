@@ -547,9 +547,46 @@ bool QWindowsPointerHandler::translateTouchEvent(QWindow *window, HWND hwnd,
         m_touchInputIDToTouchPointID.clear();
 
     const auto *keyMapper = QWindowsContext::instance()->keyMapper();
-    QWindowSystemInterface::handleTouchEvent(window, msg.time, m_touchDevice.data(), touchPoints,
-                                             keyMapper->queryKeyboardModifiers());
-    return false; // Allow mouse messages to be generated.
+
+    /**
+     * We should deliver the touch event synchronously to know if the handler
+     * actually consumed the event. If the event was consumed, then we report
+     * that to the OS and it will **not** generate any form of gesture for this
+     * touch stroke.
+     *
+     * Windows will also stop synthesizing mouse events for touch events if
+     * most of the touch events were accepted by the app. The rules are the
+     * following:
+     *
+     * Mouse events are synthesized for a touch **stroke** if the following
+     * is true:
+     *
+     * 1) The length of the stroke is more than 10 px
+     * 2) The length is measured only for the events which were **not**
+     *    consumed by the app. I.e. if you start accepting touch events
+     *    before the 10px threshold is satisfied, Windows will not
+     *    synthesize any mouse events
+     * 3) If Windows started synthesizing mouse events and sent the first
+     *    mouse event, then it will synthesize events until WM_POINTERUP
+     *    is received. It doesn't matter if the app accepts touch evetns
+     *    or not.
+     *
+     * Mouse events are synthesized for a touch **tap**action if the
+     * following is true:
+     *
+     * 1) The touch stroke was shorter than 10 px
+     * 2) Both, WM_POINTERDOWN **and** WM_POINTERUP were **not**
+     *    accepted by the app
+     *
+     * In this case Windows sends a pair for mouse-down/mouse-up
+     * events to synthesize a click
+     */
+    const bool wasAccepted =
+            QWindowSystemInterface::handleTouchEvent<QWindowSystemInterface::SynchronousDelivery>(
+                    window, msg.time, m_touchDevice.data(), touchPoints,
+                    keyMapper->queryKeyboardModifiers());
+
+    return wasAccepted;
 }
 
 #if QT_CONFIG(tabletevent)

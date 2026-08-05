@@ -3268,6 +3268,7 @@ void QGuiApplicationPrivate::processTouchEvent(QWindowSystemInterfacePrivate::To
     if (touchEvents.isEmpty())
         return;
 
+    e->eventAccepted = false;
     for (QMutableTouchEvent &touchEvent : touchEvents) {
         QWindow *window = static_cast<QWindow *>(touchEvent.target());
 
@@ -3309,6 +3310,7 @@ void QGuiApplicationPrivate::processTouchEvent(QWindowSystemInterfacePrivate::To
         // changed to reflect the local position inside the last (random) widget it tried
         // to deliver the touch event to, and will therefore be invalid afterwards.
         QGuiApplication::sendSpontaneousEvent(window, &touchEvent);
+        e->eventAccepted |= touchEvent.isAccepted();
 
         if (!e->synthetic() && !touchEvent.isAccepted() && qApp->testAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents)) {
             // exclude devices which generate their own mouse events
