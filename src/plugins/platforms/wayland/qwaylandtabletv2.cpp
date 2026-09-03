@@ -561,6 +561,10 @@ void QWaylandTabletToolV2::zwp_tablet_tool_v2_frame(uint32_t time)
                                                                          buttons, xTilt, yTilt, tangentialPressure, rotation, z,
                                                                          m_tabletSeat->seat()->modifiers());
             m_applied.proximitySurface = m_pending.proximitySurface;
+
+            // we should reupload the cursor every time a tablet device
+            // enters proximity
+            waylandWindow->restoreMouseCursor(m_tabletSeat->seat());
         }
 
         if (needsTabletEvent) {
