@@ -143,6 +143,7 @@ public:
     QWaylandWindow *pointerFocus() const;
     QWaylandWindow *keyboardFocus() const;
     QWaylandWindow *touchFocus() const;
+    QWaylandWindow *tabletFocus() const;
 
     QList<int> possibleKeys(const QKeyEvent *event) const;
 

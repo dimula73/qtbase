@@ -34,6 +34,7 @@ namespace QtWaylandClient {
 class QWaylandDisplay;
 class QWaylandInputDevice;
 class QWaylandSurface;
+class QWaylandWindow;
 
 class QWaylandTabletSeatV2;
 class QWaylandTabletV2;
@@ -62,6 +63,7 @@ public:
     ~QWaylandTabletSeatV2() override;
 
     QWaylandInputDevice *seat() const { return m_seat; }
+    QWaylandWindow *focusWindow() const;
 
     void updateCursor();
     void toolRemoved(QWaylandTabletToolV2 *tool);
@@ -102,6 +104,7 @@ public:
     QWaylandTabletToolV2(QWaylandTabletSeatV2 *tabletSeat, ::zwp_tablet_tool_v2 *tool);
     ~QWaylandTabletToolV2();
 
+    QWaylandWindow* focusWindow() const;
     void updateCursor();
 
 protected:

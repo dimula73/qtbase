@@ -194,6 +194,20 @@ QWaylandTabletSeatV2::~QWaylandTabletSeatV2()
     destroy();
 }
 
+QWaylandWindow *QWaylandTabletSeatV2::focusWindow() const
+{
+    // Here we assume that only one tool of the tablet device
+    // can be in proximity of the tablet surface, hence only
+    // one surface can be in focus
+
+    for (auto *tool : m_tools) {
+        auto *toolFocusWindow = tool->focusWindow();
+        if (toolFocusWindow) return toolFocusWindow;
+    }
+
+    return nullptr;
+}
+
 void QWaylandTabletSeatV2::zwp_tablet_seat_v2_tablet_added(zwp_tablet_v2 *id)
 {
     auto *tablet = new QWaylandTabletV2(id, m_seat->seatname());
@@ -317,6 +331,14 @@ QWaylandTabletToolV2::QWaylandTabletToolV2(QWaylandTabletSeatV2 *tabletSeat, ::z
 QWaylandTabletToolV2::~QWaylandTabletToolV2()
 {
     destroy();
+}
+
+QWaylandWindow* QWaylandTabletToolV2::focusWindow() const
+{
+    auto proximitySurface = m_applied.proximitySurface;
+    if (!proximitySurface) return nullptr;
+
+    return QWaylandWindow::fromWlSurface(proximitySurface->object());
 }
 
 void QWaylandTabletToolV2::zwp_tablet_tool_v2_type(uint32_t tool_type)
