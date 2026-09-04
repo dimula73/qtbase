@@ -143,7 +143,7 @@ public:
     QWaylandWindow *pointerFocus() const;
     QWaylandWindow *keyboardFocus() const;
     QWaylandWindow *touchFocus() const;
-    QWaylandWindow *tabletFocus() const;
+    bool hasInTabletToolFocus(QWaylandWindow *window) const;
 
     QList<int> possibleKeys(const QKeyEvent *event) const;
 
