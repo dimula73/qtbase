@@ -8,6 +8,7 @@
 #include "qwaylanddisplay_p.h"
 #include "qwaylandinputdevice_p.h"
 #include "qwaylandshmbackingstore_p.h"
+#include <qwaylandtabletv2_p.h>
 #include "qwayland-pointer-warp-v1.h"
 
 #include <QtGui/private/qguiapplication_p.h>
@@ -330,8 +331,9 @@ void QWaylandCursor::changeCursor(QCursor *cursor, QWindow *window)
         waylandWindow->resetStoredCursor();
 
     for (QWaylandInputDevice *device : mDisplay->inputDevices()) {
-        if (device->pointer() && device->pointer()->focusWindow() == waylandWindow)
+        if (device->pointerFocus() == waylandWindow || device->tabletFocus() == waylandWindow) {
             device->setCursor(cursor, bitmapBuffer, qCeil(waylandWindow->devicePixelRatio()));
+        }
     }
 
     wl_display_flush(mDisplay->wl_display());
@@ -357,10 +359,9 @@ void QWaylandCursor::setPos(const QPoint &pos)
     if (mDisplay->pointerWarp()) {
         const auto seats = mDisplay->inputDevices();
         for (auto *seat : seats) {
-            if (!seat->pointer() || !seat->pointer()->focusWindow()) {
-                continue;
-            }
-            const auto focus = seat->pointer()->focusWindow();
+            const auto focus = seat->pointerFocus();
+            if (!focus) continue;
+
             if (!focus->windowFrameGeometry().contains(pos)) {
                 continue;
             }

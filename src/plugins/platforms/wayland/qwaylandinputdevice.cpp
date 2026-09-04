@@ -595,6 +595,11 @@ QWaylandWindow *QWaylandInputDevice::touchFocus() const
     return mTouch ? mTouch->mFocus : nullptr;
 }
 
+QWaylandWindow *QWaylandInputDevice::tabletFocus() const
+{
+    return mTabletSeat ? mTabletSeat->focusWindow() : nullptr;
+}
+
 QPointF QWaylandInputDevice::pointerSurfacePosition() const
 {
     return mPointer ? mPointer->mSurfacePos : QPointF();
