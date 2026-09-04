@@ -142,9 +142,11 @@ public:
 
     void removeMouseButtonFromState(Qt::MouseButton button);
 
-    QWaylandWindow *pointerFocus() const;
     QWaylandWindow *keyboardFocus() const;
     QWaylandWindow *touchFocus() const;
+    
+    bool hasInPointerFocus(QWaylandWindow *window) const;
+    bool hasInTabletToolFocus(QWaylandWindow *window) const;
 
     QList<int> possibleKeys(const QKeyEvent *event) const;
 

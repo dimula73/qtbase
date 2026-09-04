@@ -339,7 +339,7 @@ void QWaylandCursor::changeCursor(QCursor *cursor, QWindow *window)
         waylandWindow->resetStoredCursor();
 
     for (QWaylandInputDevice *device : mDisplay->inputDevices()) {
-        if (device->pointer() && device->pointer()->focusSurface() == waylandWindow->waylandSurface())
+        if (device->hasInPointerFocus(waylandWindow) || device->hasInTabletToolFocus(waylandWindow))
             device->setCursor(cursor, bitmapBuffer, qCeil(waylandWindow->devicePixelRatio()));
     }
 

@@ -195,6 +195,15 @@ QWaylandTabletSeatV2::~QWaylandTabletSeatV2()
     destroy();
 }
 
+bool QWaylandTabletSeatV2::hasInTabletToolFocus(QWaylandWindow *window) const
+{
+    for (auto *tool : m_tools) {
+        if (tool->focusSurface() == window->waylandSurface()) return true;
+    }
+
+    return false;
+}
+
 void QWaylandTabletSeatV2::zwp_tablet_seat_v2_tablet_added(zwp_tablet_v2 *id)
 {
     auto *tablet = new QWaylandTabletV2(id, m_seat->seatname());
@@ -322,6 +331,14 @@ QWaylandTabletToolV2::QWaylandTabletToolV2(QWaylandTabletSeatV2 *tabletSeat, ::z
 QWaylandTabletToolV2::~QWaylandTabletToolV2()
 {
     destroy();
+}
+
+QWaylandSurface* QWaylandTabletToolV2::focusSurface() const
+{
+    auto proximitySurface = m_applied.proximitySurface;
+    if (!proximitySurface) return nullptr;
+
+    return QWaylandSurface::fromWlSurface(proximitySurface->object());
 }
 
 void QWaylandTabletToolV2::zwp_tablet_tool_v2_type(uint32_t tool_type)

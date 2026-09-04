@@ -1615,7 +1615,7 @@ void QWaylandWindow::setStoredCursor(const QCursor &cursor) {
 }
 
 void QWaylandWindow::applyCursor(QWaylandInputDevice *device, const QCursor &cursor) {
-    if (!device || !device->pointer() || device->pointer()->focusSurface() != waylandSurface())
+    if (!device || !(device->hasInPointerFocus(this) || device->hasInTabletToolFocus(this)))
         return;
 
     int fallbackBufferScale = qCeil(devicePixelRatio());
@@ -1975,7 +1975,10 @@ bool QWaylandWindow::windowEvent(QEvent *event)
     } else if (event->type() == QEvent::WindowUnblocked) {
         // QtGui sends leave event to window under cursor when modal window opens, so we have
         // to send enter event when modal closes and window has cursor and gets unblocked.
-        if (auto *inputDevice = mDisplay->lastInputDevice(); inputDevice && inputDevice->pointerFocus() == this) {
+        if (auto *inputDevice = mDisplay->lastInputDevice();
+            inputDevice
+            && (inputDevice->hasInPointerFocus(this) || inputDevice->hasInTabletToolFocus(this))) {
+
             const auto pos = mDisplay->waylandCursor()->pos();
             QWindowSystemInterface::handleEnterEvent(window(), mapFromGlobalF(pos), pos);
         }

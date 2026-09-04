@@ -581,12 +581,6 @@ void QWaylandInputDevice::removeMouseButtonFromState(Qt::MouseButton button)
         mPointer->mButtons = mPointer->mButtons & !button;
 }
 
-QWaylandWindow *QWaylandInputDevice::pointerFocus() const
-{
-    //TODO GUARD!
-    return mPointer && mPointer->focusSurface() ? mPointer->focusSurface()->waylandWindow() : nullptr;
-}
-
 QWaylandWindow *QWaylandInputDevice::keyboardFocus() const
 {
     //GUARD!
@@ -599,6 +593,19 @@ QWaylandWindow *QWaylandInputDevice::touchFocus() const
     //GUARD!
 
     return mTouch && mTouch->mFocus ? mTouch->mFocus->waylandWindow() : nullptr;
+}
+
+bool QWaylandInputDevice::hasInPointerFocus(QWaylandWindow *window) const
+{
+    if (mPointer && mPointer->focusSurface()) {
+        return mPointer->focusSurface()->waylandWindow() == window;
+    }
+    return false;
+}
+
+bool QWaylandInputDevice::hasInTabletToolFocus(QWaylandWindow *window) const
+{
+    return mTabletSeat && mTabletSeat->hasInTabletToolFocus(window);
 }
 
 QPointF QWaylandInputDevice::pointerSurfacePosition() const
