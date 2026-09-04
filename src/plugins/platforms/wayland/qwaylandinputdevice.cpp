@@ -901,6 +901,14 @@ void QWaylandInputDevice::Pointer::leavePointers()
     }
 }
 
+void QWaylandInputDevice::Pointer::reenterPointers()
+{
+    if (auto *window = focusWindow()) {
+        EnterEvent e(focusWindow(), mSurfacePos, mGlobalPos);
+        window->handleMouse(mParent, e);
+    }
+}
+
 class WheelEvent : public QWaylandPointerEvent
 {
 public:
