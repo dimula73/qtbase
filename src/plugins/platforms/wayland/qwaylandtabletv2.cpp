@@ -543,6 +543,17 @@ void QWaylandTabletToolV2::zwp_tablet_tool_v2_frame(uint32_t time)
         if (m_applied.enteredSurface) {
             // leaving proximity
             QWindowSystemInterface::handleTabletEnterLeaveProximityEvent(nullptr, this, false);
+
+            if (m_applied.proximitySurface) {
+                QWaylandWindow *waylandWindow = QWaylandWindow::fromWlSurface(m_applied.proximitySurface->object());
+                QWindow *window = waylandWindow->window();
+
+                QWindowSystemInterface::handleLeaveEvent(window);
+                if (m_tabletSeat->seat()->pointerFocus() == waylandWindow) {
+                    m_tabletSeat->seat()->pointer()->reenterPointers();
+                }
+            }
+
             m_pending = State(); // Don't leave pressure etc. lying around when we enter the next surface
             m_applied = State();
         } else {
@@ -562,6 +573,14 @@ void QWaylandTabletToolV2::zwp_tablet_tool_v2_frame(uint32_t time)
         // we should reupload the cursor every time a tablet device
         // enters proximity
         waylandWindow->restoreMouseCursor(m_tabletSeat->seat());
+
+        if (m_tabletSeat->seat()->pointerFocus() == waylandWindow) {
+            m_tabletSeat->seat()->pointer()->leavePointers();
+        }
+
+        const QPointF localPosition = waylandWindow->mapFromWlSurface(m_pending.surfacePosition);
+        const QPointF globalPosition = waylandWindow->mapToGlobalF(localPosition);
+        QWindowSystemInterface::handleEnterEvent(window, localPosition, globalPosition);
     }
 
     if (!(m_pending == m_applied)) {
