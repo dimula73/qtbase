@@ -351,6 +351,7 @@ private:
 public:
     void releaseButtons();
     void leavePointers();
+    void reenterPointers();
 
     QWaylandInputDevice *mParent = nullptr;
     QPointer<QWaylandSurface> mFocus;
