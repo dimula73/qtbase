@@ -63,7 +63,7 @@ public:
     ~QWaylandTabletSeatV2() override;
 
     QWaylandInputDevice *seat() const { return m_seat; }
-    QWaylandWindow *focusWindow() const;
+    bool hasInTabletToolFocus(QWaylandWindow *window) const;
 
     void updateCursor();
     void toolRemoved(QWaylandTabletToolV2 *tool);

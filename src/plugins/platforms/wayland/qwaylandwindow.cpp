@@ -1586,7 +1586,7 @@ void QWaylandWindow::setStoredCursor(const QCursor &cursor) {
 }
 
 void QWaylandWindow::applyCursor(QWaylandInputDevice *device, const QCursor &cursor) {
-    if (!device || (device->pointerFocus() != this && device->tabletFocus() != this))
+    if (!device || (device->pointerFocus() != this && !device->hasInTabletToolFocus(this)))
         return;
 
     int fallbackBufferScale = qCeil(devicePixelRatio());
@@ -1936,7 +1936,7 @@ bool QWaylandWindow::windowEvent(QEvent *event)
         // to send enter event when modal closes and window has cursor and gets unblocked.
         if (auto *inputDevice = mDisplay->lastInputDevice();
             inputDevice
-            && (inputDevice->pointerFocus() == this || inputDevice->tabletFocus() == this)) {
+            && (inputDevice->pointerFocus() == this || inputDevice->hasInTabletToolFocus(this))) {
 
             const auto pos = mDisplay->waylandCursor()->pos();
             QWindowSystemInterface::handleEnterEvent(window(), mapFromGlobalF(pos), pos);
