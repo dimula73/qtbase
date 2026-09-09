@@ -7,6 +7,9 @@
 
 #include "qwindowswindow.h"
 #include "qwindowscontext.h"
+#if QT_CONFIG(directmanipulation)
+#  include "qwindowsdirectmanipulation.h"
+#endif
 #include "qwindowstheme.h"
 #if QT_CONFIG(draganddrop)
 #  include "qwindowsdrag.h"
@@ -1631,6 +1634,13 @@ QWindowsWindow::QWindowsWindow(QWindow *aWindow, const QWindowsWindowData &data)
     if (!touchWindowTouchTypes_sys().has_value())
         registerTouchWindow();
 
+#if QT_CONFIG(directmanipulation)
+    // Direct Manipulation delivers touchpad gestures per window, and only to
+    // windows which it has been activated for.
+    if (auto *dm = QWindowsContext::instance()->directManipulation())
+        dm->registerWindow(aWindow, m_data.hwnd);
+#endif
+
     const qreal opacity = qt_window_private(aWindow)->opacity;
     if (!qFuzzyCompare(opacity, qreal(1.0)))
         setOpacity(opacity);
@@ -1652,6 +1662,10 @@ QWindowsWindow::~QWindowsWindow()
     QWindowsThemeCache::clearThemeCache(m_data.hwnd);
     if (testFlag(TouchRegistered))
         UnregisterTouchWindow(m_data.hwnd);
+#if QT_CONFIG(directmanipulation)
+    if (auto *dm = QWindowsContext::instance()->directManipulation())
+        dm->unregisterWindow(m_data.hwnd);
+#endif
     destroyWindow();
     destroyIcon();
 }
