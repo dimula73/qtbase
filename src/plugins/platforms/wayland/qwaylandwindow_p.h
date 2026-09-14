@@ -163,6 +163,8 @@ public:
     void raise() override;
     void lower() override;
 
+    bool isAboveSibling(QPlatformWindow *sibling) const;
+
     void setMask(const QRegion &region) override;
 
     void setAlertState(bool enabled) override;

@@ -58,6 +58,10 @@
 #include <QtWidgets/QDoubleSpinBox>
 #include <QtWidgets/QComboBox>
 
+#if QT_CONFIG(wayland)
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
+#endif // QT_CONFIG(wayland)
+
 #include <QtTest/QTest>
 #include <QtTest/private/qtesthelpers_p.h>
 
@@ -260,6 +264,10 @@ private slots:
     void showNativeChild();
     void closeAndShowNativeChild();
     void closeAndShowWithNativeChild();
+#if QT_CONFIG(wayland)
+    void raiseNativeChild_data();
+    void raiseNativeChild();
+#endif // QT_CONFIG(wayland)
     void transientParent();
     void qobject_castOnDestruction();
 
@@ -5579,6 +5587,72 @@ void tst_QWidget::closeAndShowNativeChild()
     nativeChild->show();
     QVERIFY(!nativeChild->isHidden());
 }
+
+#if QT_CONFIG(wayland)
+
+void tst_QWidget::raiseNativeChild_data()
+{
+    QTest::addColumn<QString>("mode");
+
+    QTest::addRow("raise") << "raise";
+    QTest::addRow("lower") << "lower";
+
+    // we don't need to test for `QWidget::stackUnder()` since it
+    // works with alien widgets only
+}
+
+void tst_QWidget::raiseNativeChild()
+{
+    if (!QGuiApplication::platformName().startsWith(QLatin1String("wayland"), Qt::CaseInsensitive))
+        QSKIP("QWaylandWindow::isAboveSibling() is implemented for Wayland platform only.");
+
+    QWidget topLevel;
+    QWidget *nativeChild1 = new QWidget;
+    nativeChild1->winId();
+    nativeChild1->setFixedSize(200, 200);
+
+    QWidget *nativeChild2 = new QWidget;
+    nativeChild2->winId();
+    nativeChild2->setFixedSize(200, 200);
+
+    QHBoxLayout *layout = new QHBoxLayout;
+    layout->addWidget(nativeChild1);
+    layout->addWidget(nativeChild2);
+    topLevel.setLayout(layout);
+
+    topLevel.show();
+    QVERIFY(!nativeChild1->isHidden());
+    QVERIFY(!nativeChild2->isHidden());
+
+    QPlatformWindow *window1 = nativeChild1->windowHandle()->handle();
+    QPlatformWindow *window2 = nativeChild2->windowHandle()->handle();
+
+    QVERIFY(window1);
+    QVERIFY(window2);
+
+    QtWaylandClient::QWaylandWindow* waylandWindow1 = dynamic_cast<QtWaylandClient::QWaylandWindow*>(window1);
+    QtWaylandClient::QWaylandWindow* waylandWindow2 = dynamic_cast<QtWaylandClient::QWaylandWindow*>(window2);
+
+    QVERIFY(waylandWindow1);
+    QVERIFY(waylandWindow2);
+
+    QVERIFY(waylandWindow2->isAboveSibling(waylandWindow1));
+    QVERIFY(!waylandWindow1->isAboveSibling(waylandWindow2));
+
+    QFETCH(QString, mode);
+
+    if (mode == "raise") {
+        nativeChild1->raise();
+        QVERIFY(waylandWindow1->isAboveSibling(waylandWindow2));
+    } else if (mode == "lower") {
+        nativeChild2->lower();
+        QVERIFY(waylandWindow1->isAboveSibling(waylandWindow2));
+    } else {
+        qFatal("Unknown mode %s", mode.toLatin1().data());
+    }
+}
+
+#endif // QT_CONFIG(wayland)
 
 void tst_QWidget::closeAndShowWithNativeChild()
 {

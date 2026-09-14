@@ -36,6 +36,11 @@ qt_internal_add_test(tst_qwidget
 ## Scopes:
 #####################################################################
 
+qt_internal_extend_target(tst_qwidget CONDITION QT_FEATURE_wayland
+    LIBRARIES
+        Qt::WaylandClientPrivate
+)
+
 qt_internal_extend_target(tst_qwidget CONDITION AIX
     COMPILE_OPTIONS
         -fpermissive

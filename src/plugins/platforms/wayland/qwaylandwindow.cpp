@@ -665,13 +665,79 @@ void QWaylandWindow::raise()
 {
     if (mShellSurface)
         mShellSurface->raise();
-}
+    if (mSubSurfaceWindow) {
+        QWaylandWindow *parentWindow = mSubSurfaceWindow->parent();
+        auto &siblings = parentWindow->mChildren;
 
+        if (siblings.last() != mSubSurfaceWindow) {
+            wl_surface *surfaceAbove = siblings.last()->window()->mSurface->object();
+
+            auto it = std::find(siblings.begin(), siblings.end(), mSubSurfaceWindow);
+            Q_ASSERT(it != siblings.end());
+            std::rotate(it, std::next(it), siblings.end());
+
+            mSubSurfaceWindow->place_above(surfaceAbove);
+            parentWindow->commit();
+        }
+    }
+}
 
 void QWaylandWindow::lower()
 {
     if (mShellSurface)
         mShellSurface->lower();
+    if (mSubSurfaceWindow) {
+        QWaylandWindow *parentWindow = mSubSurfaceWindow->parent();
+        auto &siblings = parentWindow->mChildren;
+
+        if (siblings.first() != mSubSurfaceWindow) {
+            wl_surface *surfaceBelow = siblings.first()->window()->mSurface->object();
+
+            auto it = std::find(siblings.begin(), siblings.end(), mSubSurfaceWindow);
+            Q_ASSERT(it != siblings.end());
+            std::rotate(siblings.begin(), it, std::next(it));
+
+            mSubSurfaceWindow->place_below(surfaceBelow);
+            parentWindow->commit();
+        }
+    }
+}
+
+bool QWaylandWindow::isAboveSibling(QPlatformWindow *sibling) const
+{
+    if (!mSubSurfaceWindow) {
+        qWarning("QWaylandWindow::placeAboveSibling cannot move a toplevel surface!");
+        return false;
+    }
+
+    QWaylandWindow *parentSurface = mSubSurfaceWindow->parent();
+    Q_ASSERT(parentSurface);
+
+    QWaylandWindow *siblingWindow = dynamic_cast<QWaylandWindow*>(sibling);
+    if (!siblingWindow || siblingWindow == this) {
+        qWarning() << "QWaylandWindow::placeAboveSibling: invalid sibling window handle";
+        return false;
+    }
+
+    QWaylandSubSurface *siblingSubSurface = siblingWindow->mSubSurfaceWindow;
+
+    if (!siblingSubSurface
+        || !siblingWindow->mSubSurfaceWindow->parent()
+        || siblingWindow->mSubSurfaceWindow->parent() != parentSurface) {
+
+        qWarning("QWaylandWindow::placeAboveSibling should be called for the children of the same parent!");
+        return false;
+    }
+
+    auto &children = parentSurface->mChildren;
+
+    auto it = std::find(children.begin(), children.end(), mSubSurfaceWindow);
+    Q_ASSERT(it != children.end());
+
+    auto siblingIt = std::find(children.begin(), children.end(), siblingSubSurface);
+    Q_ASSERT(siblingIt != children.end());
+
+    return it > siblingIt;
 }
 
 void QWaylandWindow::setMask(const QRegion &mask)
