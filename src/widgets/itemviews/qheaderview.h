@@ -15,6 +15,8 @@ class tst_QHeaderView;
 
 QT_BEGIN_NAMESPACE
 
+#define KRITA_HEADER_VIEW_MEMORY_MODE_INITIALIZATION_FIX 1
+
 class QHeaderViewPrivate;
 class QStyleOptionHeader;
 
