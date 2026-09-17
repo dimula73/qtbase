@@ -3661,11 +3661,19 @@ void QHeaderViewPrivate::resizeSections(QHeaderView::ResizeMode globalMode, bool
 
     executePostedLayout();
 
-    if (noSectionMemoryUsage() && (hasAutoResizeSections() || globalMode != QHeaderView::Fixed))
-        setHeaderMode(HeaderMode::FlexibleWithSectionMemoryUsage);
-
     if (sectionCount() == 0 )
         return;
+
+    /**
+     * The function forcefully creates sections in the end of its run
+     * by calling createSectionItems(), which, technically, switches
+     * the view into normal mode, bypassing the actual initialization
+     * routines. That makes the following call to
+     * QHeaderView::initializeSections() skip initilization of sections
+     * and lock up the widget.
+     */
+    if (noSectionMemoryUsage())
+        setHeaderMode(HeaderMode::FlexibleWithSectionMemoryUsage);
 
     if (resizeRecursionBlock)
         return;
