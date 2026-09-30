@@ -764,6 +764,7 @@ std::unique_ptr<QWaylandXdgSurface::Positioner> QWaylandXdgSurface::createPositi
     Qt::Edges anchor = Qt::TopEdge | Qt::RightEdge;
     Qt::Edges gravity = Qt::BottomEdge | Qt::RightEdge;
     uint32_t constraintAdjustment = QtWayland::xdg_positioner::constraint_adjustment_slide_x | QtWayland::xdg_positioner::constraint_adjustment_slide_y;
+    bool reactive = false;
 
     // Compensate the margins to appear exactly at the position provided by QPlatformWindow::geometry
     // These marnings have nothing to do with parent controls, don't apply them when positioning via parent control geometry
@@ -781,18 +782,21 @@ std::unique_ptr<QWaylandXdgSurface::Positioner> QWaylandXdgSurface::createPositi
         gravity = Qt::BottomEdge | Qt::RightEdge;
         constraintAdjustment = QtWayland::xdg_positioner::constraint_adjustment_slide_x |
                 QtWayland::xdg_positioner::constraint_adjustment_flip_y | QtWayland::xdg_positioner::constraint_adjustment_slide_y;
+        reactive = true;
         break;
     case QNativeInterface::Private::QWaylandWindow::SubMenu:
         anchor = Qt::TopEdge | Qt::RightEdge;
         gravity = Qt::BottomEdge | Qt::RightEdge;
         constraintAdjustment = QtWayland::xdg_positioner::constraint_adjustment_flip_x |
                 QtWayland::xdg_positioner::constraint_adjustment_slide_y;
+        reactive = true;
         break;
     case QNativeInterface::Private::QWaylandWindow::ToolTip:
         anchor = Qt::BottomEdge | Qt::RightEdge;
         gravity = Qt::BottomEdge | Qt::RightEdge;
         constraintAdjustment = QtWayland::xdg_positioner::constraint_adjustment_flip_x | QtWayland::xdg_positioner::constraint_adjustment_slide_x |
                 QtWayland::xdg_positioner::constraint_adjustment_flip_y | QtWayland::xdg_positioner::constraint_adjustment_slide_y;
+        reactive = true;
         break;
     default:
         break;
@@ -818,6 +822,9 @@ std::unique_ptr<QWaylandXdgSurface::Positioner> QWaylandXdgSurface::createPositi
     const QVariant constraintAdjustmentVariant = m_window->window()->property("_q_waylandPopupConstraintAdjustment");
     if (constraintAdjustmentVariant.isValid())
         constraintAdjustment = constraintAdjustmentVariant.toUInt();
+    const QVariant anchorReactiveVariant = m_window->window()->property("_q_waylandPopupAnchorReactive");
+    if (anchorReactiveVariant.isValid())
+        reactive = anchorReactiveVariant.toBool();
 
     // set_popup expects a position relative to the parent
     QRect windowGeometry = m_window->windowContentGeometry();
@@ -832,6 +839,9 @@ std::unique_ptr<QWaylandXdgSurface::Positioner> QWaylandXdgSurface::createPositi
     positioner->set_gravity(gravityFromEdge(gravity));
     positioner->set_size(windowGeometry.width(), windowGeometry.height());
     positioner->set_constraint_adjustment(constraintAdjustment);
+    if (reactive && positioner->version() >= XDG_POSITIONER_SET_REACTIVE_SINCE_VERSION) {
+        positioner->set_reactive();
+    }
     return positioner;
 }
 
