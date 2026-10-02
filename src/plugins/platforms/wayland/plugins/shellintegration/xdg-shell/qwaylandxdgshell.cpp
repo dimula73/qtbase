@@ -435,6 +435,11 @@ bool QWaylandXdgSurface::isExposed() const
     return m_configured;
 }
 
+bool QWaylandXdgSurface::isWaitingForMoreConfigureEvents()
+{
+    return m_popup && m_popup->m_waitingForReposition;
+}
+
 void QWaylandXdgSurface::applyConfigure()
 {
     // It is a redundant ack_configure, so skipped.

@@ -804,7 +804,20 @@ void QWaylandWindow::applyConfigure()
         sendExposeEvent(QRect(QPoint(), geometry().size()));
     else
         // we still need to commit the configured ack for a hidden surface
-        commit();
+
+        // It may be that we are a popup window that is waiting for multiple
+        // `xdg_popup_repositioned` events. We use a hack and call such
+        // a surface as "unexposed", even though for the compositor this
+        // surface is considered as perfectly exposed. If we call `commit()`
+        // for such a surface without sending either expose- or paint-event,
+        // the compositor will draw a stretched version of the outdated buffer
+        // content on a resized surface, causing weird flickering. So, until
+        // a better solution (either stop considering a being repositioned
+        // popup as unexposed or implement some form of paint events to
+        // rerender the content of the buffer while resizing) we just
+        // skip committing such configure events.
+        if (mShellSurface && !mShellSurface->isWaitingForMoreConfigureEvents())
+            commit();
 }
 
 void QWaylandWindow::attach(QWaylandBuffer *buffer, int x, int y)
