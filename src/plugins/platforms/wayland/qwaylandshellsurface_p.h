@@ -61,6 +61,7 @@ public:
     virtual void sendProperty(const QString &name, const QVariant &value);
 
     virtual void applyConfigure() {}
+    virtual bool isWaitingForMoreConfigureEvents() { return false; }
     virtual void requestWindowStates(Qt::WindowStates states) {Q_UNUSED(states);}
     virtual bool wantsDecorations() const { return false; }
     virtual QMargins serverSideFrameMargins() const { return QMargins(); }

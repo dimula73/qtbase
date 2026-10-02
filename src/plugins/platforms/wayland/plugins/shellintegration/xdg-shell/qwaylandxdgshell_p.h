@@ -53,6 +53,7 @@ public:
     bool isExposed() const override;
     bool handlesActiveState() const { return m_toplevel; }
     void applyConfigure() override;
+    bool isWaitingForMoreConfigureEvents() override;
     bool wantsDecorations() const override;
     void propagateSizeHints() override;
     void setContentGeometry(const QRect &rect) override;
