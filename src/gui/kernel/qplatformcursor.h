@@ -52,7 +52,6 @@ public:
 
     // input methods
     virtual void pointerEvent(const QMouseEvent & event) { Q_UNUSED(event); }
-    virtual void pointerEvent(const QTabletEvent & event) { Q_UNUSED(event); }
 #ifndef QT_NO_CURSOR
     virtual void changeCursor(QCursor * windowCursor, QWindow * window) = 0;
     virtual void setOverrideCursor(const QCursor &);
