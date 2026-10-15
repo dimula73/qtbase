@@ -820,13 +820,45 @@ QWindowsMimeImage::QWindowsMimeImage()
     CF_PNG = RegisterClipboardFormat(L"PNG");
 }
 
+static bool getHasAlphaChannel(const QMimeData *mimeData)
+{
+    bool hasAlphaChannel = false;
+
+    // This is a special mime type that application can implement
+    // to avoid creation of the entire QImage just for the sake of
+    // detecting the presence of alpha channel. For bigger images
+    // just a mere call to `mimeData->imageData()` can take up
+    // to 500-800ms
+
+    const QLatin1StringView hasAlphaMimeType = "application/x-qt-image-has-alpha"_L1;
+    if (mimeData->hasFormat(hasAlphaMimeType))
+        hasAlphaChannel = mimeData->data(hasAlphaMimeType).toInt();
+    else {
+        auto image = qvariant_cast<QImage>(mimeData->imageData());
+        if (!image.isNull())
+            hasAlphaChannel = image.hasAlphaChannel();
+    }
+
+    return hasAlphaChannel;
+}
+
 QList<FORMATETC> QWindowsMimeImage::formatsForMime(const QString &mimeType, const QMimeData *mimeData) const
 {
     QList<FORMATETC> formatetcs;
     if (mimeData->hasImage() && mimeType == u"application/x-qt-image") {
-        //add DIBV5 if image has alpha channel. Do not add CF_PNG here as it will confuse MS Office (QTBUG47656).
+
+        const bool hasAlphaChannel = getHasAlphaChannel(mimeData);
+        if (hasAlphaChannel)
+            // CF_PNG is the only format modern MS Office (and other apps that
+            // deliver image data via TYMED_ISTREAM) reads with alpha
+            // preserved (QTBUG-126191).
+            formatetcs += setCf(CF_PNG);
+
         formatetcs += setCf(CF_DIBV5);
-        formatetcs += setCf(CF_DIB);
+
+        if (!hasAlphaChannel)
+            // Chrome cannot handle DIB with transparency
+            formatetcs += setCf(CF_DIB);
     }
     if (!formatetcs.isEmpty())
         qCDebug(lcQpaMime) << __FUNCTION__ << mimeType << formatetcs;
@@ -856,13 +888,15 @@ bool QWindowsMimeImage::canConvertFromMime(const FORMATETC &formatetc, const QMi
     
     if (!mimeData->hasImage())
         return false;
-    const QImage image = qvariant_cast<QImage>(mimeData->imageData());
-    if (image.isNull())
-        return false;
+
+    const bool hasAlphaChannel = getHasAlphaChannel(mimeData);
+    // QTBUG-11463, deny CF_DIB support for images with alpha to prevent loss of
+    // transparency in conversion.
     // QTBUG-64322: Use PNG only for transparent images as otherwise MS PowerPoint
     // cannot handle it.
-    return cf == CF_DIBV5 || cf == CF_DIB
-        || (cf == int(CF_PNG) && image.hasAlphaChannel());
+    return cf == CF_DIBV5
+        || (cf == CF_DIB && !hasAlphaChannel)
+        || (cf == int(CF_PNG) && hasAlphaChannel);
 }
 
 bool QWindowsMimeImage::convertFromMime(const FORMATETC &formatetc, const QMimeData *mimeData, STGMEDIUM * pmedium) const
